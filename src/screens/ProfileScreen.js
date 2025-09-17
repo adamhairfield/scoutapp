@@ -164,6 +164,18 @@ const ProfileScreen = ({ navigation }) => {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Settings</Text>
+        {(user.role === 'parent' || user.role === 'player') && (
+          <TouchableOpacity 
+            style={styles.settingItem}
+            onPress={() => navigation.navigate('ManageRelationships')}
+          >
+            <Ionicons name="people" size={24} color="#666" />
+            <Text style={styles.settingText}>
+              {user.role === 'parent' ? 'Manage Children' : 'Manage Parents'}
+            </Text>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
+        )}
         <TouchableOpacity style={styles.settingItem}>
           <Ionicons name="notifications" size={24} color="#666" />
           <Text style={styles.settingText}>Notifications</Text>

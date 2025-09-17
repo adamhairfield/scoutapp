@@ -8,10 +8,13 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Alert,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { messageService } from '../services/database';
 
 const MessagesScreen = ({ navigation }) => {
   const { user } = useAuth();
@@ -19,99 +22,95 @@ const MessagesScreen = ({ navigation }) => {
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadConversations();
   }, []);
 
-  const loadConversations = () => {
-    // Mock conversations based on user role
-    const mockConversations = user.role === 'coach' 
-      ? [
-          {
-            id: '1',
-            name: 'Sarah Johnson (Parent)',
-            lastMessage: 'Thanks for the practice update!',
-            timestamp: '2:30 PM',
-            unread: 0,
-            avatar: '👩',
-          },
-          {
-            id: '2',
-            name: 'Mike Davis (Parent)',
-            lastMessage: 'Can we discuss playing time?',
-            timestamp: '1:15 PM',
-            unread: 2,
-            avatar: '👨',
-          },
-          {
-            id: '3',
-            name: 'Team Parents Group',
-            lastMessage: 'Tournament schedule is posted',
-            timestamp: '11:45 AM',
-            unread: 0,
-            avatar: '👥',
-          },
-        ]
-      : [
-          {
-            id: '1',
-            name: 'Coach Martinez',
-            lastMessage: 'Great job at practice today!',
-            timestamp: '4:20 PM',
-            unread: 1,
-            avatar: '🏃‍♂️',
-          },
-          {
-            id: '2',
-            name: 'Team Eagles',
-            lastMessage: 'Game tomorrow at 3 PM',
-            timestamp: '2:10 PM',
-            unread: 0,
-            avatar: '🦅',
-          },
-        ];
-    
-    setConversations(mockConversations);
+  const loadConversations = async () => {
+    try {
+      setLoading(true);
+      const userConversations = await messageService.getUserConversations(user.id);
+      
+      // Format conversations for display
+      const formattedConversations = userConversations.map(conv => ({
+        id: conv.id,
+        partnerId: conv.id,
+        name: `${conv.partner.name} (${conv.partner.role === 'parent' ? 'Parent' : 'Coach'})`,
+        lastMessage: conv.lastMessage,
+        timestamp: new Date(conv.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        unread: conv.unread,
+        avatar: conv.partner.role === 'parent' ? '👨‍👩‍👧‍👦' : '🏃‍♂️',
+        partner: conv.partner
+      }));
+      
+      setConversations(formattedConversations);
+    } catch (error) {
+      console.error('Error loading conversations:', error);
+      Alert.alert('Error', 'Failed to load conversations');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const loadMessages = (conversationId) => {
-    // Mock messages for selected conversation
-    const mockMessages = [
-      {
-        id: '1',
-        text: 'Hi! How is the season going so far?',
-        sender: 'other',
-        timestamp: '2:25 PM',
-      },
-      {
-        id: '2',
-        text: 'Going great! The kids are really improving.',
-        sender: 'me',
-        timestamp: '2:27 PM',
-      },
-      {
-        id: '3',
-        text: 'Thanks for the practice update!',
-        sender: 'other',
-        timestamp: '2:30 PM',
-      },
-    ];
-    setMessages(mockMessages);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadConversations();
+    setRefreshing(false);
   };
 
-  const sendMessage = () => {
-    if (!newMessage.trim()) return;
+  const loadMessages = async (conversation) => {
+    try {
+      const directMessages = await messageService.getDirectMessages(user.id, conversation.partnerId);
+      
+      // Format messages for display
+      const formattedMessages = directMessages.map(msg => ({
+        id: msg.id.toString(),
+        text: msg.content,
+        sender: msg.sender_id === user.id ? 'me' : 'other',
+        timestamp: new Date(msg.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      }));
+      
+      setMessages(formattedMessages);
+    } catch (error) {
+      console.error('Error loading messages:', error);
+      Alert.alert('Error', 'Failed to load messages');
+    }
+  };
 
-    const message = {
-      id: Date.now().toString(),
-      text: newMessage,
-      sender: 'me',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !selectedConversation) return;
 
-    setMessages([...messages, message]);
-    setNewMessage('');
+    try {
+      const messageData = {
+        sender_id: user.id,
+        recipient_id: selectedConversation.partnerId,
+        content: newMessage.trim(),
+        message_type: 'direct'
+      };
+
+      const result = await messageService.sendMessage(messageData);
+      
+      if (result.success) {
+        // Add message to local state immediately for better UX
+        const message = {
+          id: result.data.id.toString(),
+          text: newMessage,
+          sender: 'me',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+
+        setMessages([...messages, message]);
+        setNewMessage('');
+      } else {
+        Alert.alert('Error', 'Failed to send message');
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      Alert.alert('Error', 'Failed to send message');
+    }
   };
 
   const ConversationItem = ({ item }) => (
@@ -119,7 +118,7 @@ const MessagesScreen = ({ navigation }) => {
       style={styles.conversationItem}
       onPress={() => {
         setSelectedConversation(item);
-        loadMessages(item.id);
+        loadMessages(item);
       }}
     >
       <View style={styles.avatarContainer}>
@@ -213,7 +212,10 @@ const MessagesScreen = ({ navigation }) => {
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.title}>Messages</Text>
-        <TouchableOpacity style={styles.newMessageButton}>
+        <TouchableOpacity 
+          style={styles.newMessageButton}
+          onPress={() => navigation.navigate('NewMessage')}
+        >
           <Ionicons name="create" size={24} color="#667eea" />
         </TouchableOpacity>
       </View>
@@ -223,6 +225,9 @@ const MessagesScreen = ({ navigation }) => {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <ConversationItem item={item} />}
         style={styles.conversationsList}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       />
     </SafeAreaView>
   );

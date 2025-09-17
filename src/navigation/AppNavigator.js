@@ -8,7 +8,12 @@ import { useAuth } from '../contexts/AuthContext';
 import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
 import CreateTeamScreen from '../screens/CreateTeamScreen';
+import TeamsScreen from '../screens/TeamsScreen';
+import JoinTeamScreen from '../screens/JoinTeamScreen';
+import TeamRequestsScreen from '../screens/TeamRequestsScreen';
 import MessagesScreen from '../screens/MessagesScreen';
+import NewMessageScreen from '../screens/NewMessageScreen';
+import ManageRelationshipsScreen from '../screens/ManageRelationshipsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
 const Stack = createStackNavigator();
@@ -55,13 +60,11 @@ const MainTabs = () => {
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Messages" component={MessagesScreen} />
-      {user && user.role === 'coach' && (
-        <Tab.Screen 
-          name="Teams" 
-          component={CreateTeamScreen}
-          options={{ tabBarLabel: 'Teams' }}
-        />
-      )}
+      <Tab.Screen 
+        name="Teams" 
+        component={TeamsScreen}
+        options={{ tabBarLabel: 'Teams' }}
+      />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
@@ -81,7 +84,11 @@ const AppNavigator = () => {
           <>
             <Stack.Screen name="MainTabs" component={MainTabs} />
             <Stack.Screen name="CreateTeam" component={CreateTeamScreen} />
+            <Stack.Screen name="JoinTeam" component={JoinTeamScreen} />
+            <Stack.Screen name="TeamRequests" component={TeamRequestsScreen} />
             <Stack.Screen name="Messages" component={MessagesScreen} />
+            <Stack.Screen name="NewMessage" component={NewMessageScreen} />
+            <Stack.Screen name="ManageRelationships" component={ManageRelationshipsScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
           </>
         ) : (

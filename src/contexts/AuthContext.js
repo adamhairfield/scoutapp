@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '../config/supabase';
 
 const AuthContext = createContext();
 
@@ -21,9 +22,35 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuthState = async () => {
     try {
-      const userData = await AsyncStorage.getItem('user');
-      if (userData) {
-        setUser(JSON.parse(userData));
+      // Check Supabase session
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('Error getting session:', error);
+      } else if (session?.user) {
+        // Get user profile data
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        
+        const userData = {
+          id: session.user.id,
+          email: session.user.email,
+          name: profile?.name || session.user.email.split('@')[0],
+          role: profile?.role || 'player',
+          ...profile
+        };
+        
+        setUser(userData);
+        await AsyncStorage.setItem('user', JSON.stringify(userData));
+      } else {
+        // Check local storage as fallback
+        const userData = await AsyncStorage.getItem('user');
+        if (userData) {
+          setUser(JSON.parse(userData));
+        }
       }
     } catch (error) {
       console.error('Error checking auth state:', error);
@@ -34,13 +61,58 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password, role) => {
     try {
-      // Simulate API call - replace with actual authentication
-      const userData = {
-        id: Date.now().toString(),
+      // Authenticate with Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        role, // 'coach', 'parent', 'player'
-        name: email.split('@')[0],
-        createdAt: new Date().toISOString(),
+        password,
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      // Get or create user profile
+      let { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+
+      if (!profile) {
+        // Create profile if it doesn't exist
+        const { data: newProfile, error: profileError } = await supabase
+          .from('profiles')
+          .insert([
+            {
+              id: data.user.id,
+              email: data.user.email,
+              name: data.user.email.split('@')[0],
+              role: role || 'player',
+              created_at: new Date().toISOString(),
+            }
+          ])
+          .select()
+          .single();
+
+        if (profileError) {
+          console.error('Error creating profile:', profileError);
+          profile = {
+            id: data.user.id,
+            email: data.user.email,
+            name: data.user.email.split('@')[0],
+            role: role || 'player',
+          };
+        } else {
+          profile = newProfile;
+        }
+      }
+
+      const userData = {
+        id: data.user.id,
+        email: data.user.email,
+        name: profile.name || data.user.email.split('@')[0],
+        role: profile.role || 'player',
+        ...profile
       };
 
       await AsyncStorage.setItem('user', JSON.stringify(userData));
@@ -53,14 +125,59 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (email, password, role, additionalData = {}) => {
     try {
-      // Simulate API call - replace with actual registration
-      const userData = {
-        id: Date.now().toString(),
+      // Register with Supabase
+      const { data, error } = await supabase.auth.signUp({
         email,
-        role,
-        name: additionalData.name || email.split('@')[0],
-        createdAt: new Date().toISOString(),
-        ...additionalData,
+        password,
+        options: {
+          data: {
+            role: role || 'player',
+            name: additionalData.name || email.split('@')[0],
+            ...additionalData
+          }
+        }
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      // Check if profile already exists (created by trigger)
+      let { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+
+      if (!existingProfile) {
+        // Create user profile if it doesn't exist
+        const profileData = {
+          id: data.user.id,
+          email: data.user.email,
+          name: additionalData.name || data.user.email.split('@')[0],
+          role: role || 'player',
+          created_at: new Date().toISOString(),
+          ...additionalData,
+        };
+
+        const { data: newProfile, error: profileError } = await supabase
+          .from('profiles')
+          .insert([profileData])
+          .select()
+          .single();
+
+        if (profileError) {
+          console.error('Error creating profile:', profileError);
+          existingProfile = profileData; // Use the data we tried to insert
+        } else {
+          existingProfile = newProfile;
+        }
+      }
+
+      const userData = {
+        id: data.user.id,
+        email: data.user.email,
+        ...existingProfile
       };
 
       await AsyncStorage.setItem('user', JSON.stringify(userData));
@@ -73,6 +190,8 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
+      // Sign out from Supabase
+      await supabase.auth.signOut();
       await AsyncStorage.removeItem('user');
       setUser(null);
     } catch (error) {

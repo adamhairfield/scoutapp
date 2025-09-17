@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { teamService } from '../services/database';
 
 const CreateTeamScreen = ({ navigation }) => {
   const { user } = useAuth();
@@ -64,20 +65,38 @@ const CreateTeamScreen = ({ navigation }) => {
 
     setLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      Alert.alert(
-        'Success!', 
-        `Team "${teamName}" has been created with ${subscriptionPlans.find(p => p.id === selectedSubscription).name} subscription.`,
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+    try {
+      // Create team in database
+      const teamData = {
+        name: teamName,
+        sport: sport,
+        coach_id: user.id,
+        description: description,
+        season: `${ageGroup} ${new Date().getFullYear()}`,
+      };
+
+      const result = await teamService.createTeam(teamData);
+
+      if (result.success) {
+        Alert.alert(
+          'Success!', 
+          `Team "${teamName}" has been created successfully!`,
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.goBack(),
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Error', result.error || 'Failed to create team');
+      }
+    } catch (error) {
+      console.error('Error creating team:', error);
+      Alert.alert('Error', 'Failed to create team. Please try again.');
+    } finally {
       setLoading(false);
-    }, 1500);
+    }
   };
 
   const SubscriptionCard = ({ plan, isSelected, onSelect }) => (
