@@ -7,10 +7,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
-import CreateTeamScreen from '../screens/CreateTeamScreen';
-import TeamsScreen from '../screens/TeamsScreen';
-import JoinTeamScreen from '../screens/JoinTeamScreen';
-import TeamRequestsScreen from '../screens/TeamRequestsScreen';
+import CreateGroupScreen from '../screens/CreateGroupScreen';
+import GroupsScreen from '../screens/GroupsScreen';
+import JoinGroupScreen from '../screens/JoinGroupScreen';
+import GroupRequestsScreen from '../screens/GroupRequestsScreen';
+import GroupDetailsScreen from '../screens/GroupDetailsScreen';
+import InviteScreen from '../screens/InviteScreen';
+import JoinByInviteScreen from '../screens/JoinByInviteScreen';
 import MessagesScreen from '../screens/MessagesScreen';
 import NewMessageScreen from '../screens/NewMessageScreen';
 import ManageRelationshipsScreen from '../screens/ManageRelationshipsScreen';
@@ -39,7 +42,7 @@ const MainTabs = () => {
             iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
-          } else if (route.name === 'Teams') {
+          } else if (route.name === 'Groups') {
             iconName = focused ? 'people' : 'people-outline';
           }
 
@@ -61,9 +64,9 @@ const MainTabs = () => {
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Messages" component={MessagesScreen} />
       <Tab.Screen 
-        name="Teams" 
-        component={TeamsScreen}
-        options={{ tabBarLabel: 'Teams' }}
+        name="Groups" 
+        component={GroupsScreen}
+        options={{ tabBarLabel: 'Groups' }}
       />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
@@ -83,9 +86,12 @@ const AppNavigator = () => {
         {user ? (
           <>
             <Stack.Screen name="MainTabs" component={MainTabs} />
-            <Stack.Screen name="CreateTeam" component={CreateTeamScreen} />
-            <Stack.Screen name="JoinTeam" component={JoinTeamScreen} />
-            <Stack.Screen name="TeamRequests" component={TeamRequestsScreen} />
+            <Stack.Screen name="CreateGroup" component={CreateGroupScreen} />
+            <Stack.Screen name="JoinGroup" component={JoinGroupScreen} />
+            <Stack.Screen name="GroupRequests" component={GroupRequestsScreen} />
+            <Stack.Screen name="GroupDetails" component={GroupDetailsScreen} />
+            <Stack.Screen name="Invite" component={InviteScreen} />
+            <Stack.Screen name="JoinByInvite" component={JoinByInviteScreen} />
             <Stack.Screen name="Messages" component={MessagesScreen} />
             <Stack.Screen name="NewMessage" component={NewMessageScreen} />
             <Stack.Screen name="ManageRelationships" component={ManageRelationshipsScreen} />

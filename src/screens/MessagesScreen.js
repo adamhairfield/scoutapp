@@ -63,7 +63,15 @@ const MessagesScreen = ({ navigation }) => {
 
   const loadMessages = async (conversation) => {
     try {
-      const directMessages = await messageService.getDirectMessages(user.id, conversation.partnerId);
+      const result = await messageService.getDirectMessages(user.id, conversation.partnerId);
+      
+      if (!result.success) {
+        console.error('Error loading messages:', result.error);
+        Alert.alert('Error', 'Failed to load messages');
+        return;
+      }
+      
+      const directMessages = result.data || [];
       
       // Format messages for display
       const formattedMessages = directMessages.map(msg => ({

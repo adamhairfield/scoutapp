@@ -34,9 +34,15 @@ const LoginScreen = ({ navigation }) => {
       return;
     }
 
+    // For sign up, check if role is selected
+    if (!isLogin && !selectedRole) {
+      Alert.alert('Error', 'Please select your role');
+      return;
+    }
+
     setLoading(true);
     const result = isLogin 
-      ? await login(email, password, selectedRole)
+      ? await login(email, password) // Don't pass role for login
       : await register(email, password, selectedRole);
 
     if (!result.success) {
@@ -93,7 +99,7 @@ const LoginScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.formContainer}>
-            <RoleSelector />
+            {!isLogin && <RoleSelector />}
 
             <View style={styles.inputContainer}>
               <Ionicons name="mail" size={20} color="#666" style={styles.inputIcon} />

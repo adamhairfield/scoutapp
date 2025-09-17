@@ -71,40 +71,20 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: error.message };
       }
 
-      // Get or create user profile
-      let { data: profile } = await supabase
+      // Get user profile (should already exist from registration)
+      let { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', data.user.id)
         .single();
 
-      if (!profile) {
-        // Create profile if it doesn't exist
-        const { data: newProfile, error: profileError } = await supabase
-          .from('profiles')
-          .insert([
-            {
-              id: data.user.id,
-              email: data.user.email,
-              name: data.user.email.split('@')[0],
-              role: role || 'player',
-              created_at: new Date().toISOString(),
-            }
-          ])
-          .select()
-          .single();
-
-        if (profileError) {
-          console.error('Error creating profile:', profileError);
-          profile = {
-            id: data.user.id,
-            email: data.user.email,
-            name: data.user.email.split('@')[0],
-            role: role || 'player',
-          };
-        } else {
-          profile = newProfile;
-        }
+      if (profileError || !profile) {
+        // Profile doesn't exist - this shouldn't happen for existing users
+        console.error('Profile not found for user:', data.user.id, profileError);
+        return { 
+          success: false, 
+          error: 'User profile not found. Please contact support or try registering again.' 
+        };
       }
 
       const userData = {

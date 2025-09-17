@@ -1,18 +1,18 @@
 import { supabase } from '../config/supabase';
 
-// Team Management Functions
-export const teamService = {
-  // Create a new team
-  async createTeam(teamData) {
+// Group Management Functions
+export const groupService = {
+  // Create a new group
+  async createGroup(groupData) {
     try {
       const { data, error } = await supabase
-        .from('teams')
+        .from('groups')
         .insert([{
-          name: teamData.name,
-          sport: teamData.sport,
-          coach_id: teamData.coach_id,
-          description: teamData.description,
-          season: teamData.season,
+          name: groupData.name,
+          sport: groupData.sport,
+          leader_id: groupData.leader_id,
+          description: groupData.description,
+          season: groupData.season,
           created_at: new Date().toISOString()
         }])
         .select()
@@ -25,70 +25,143 @@ export const teamService = {
     }
   },
 
-  // Get teams for a coach
-  async getCoachTeams(coachId) {
+  // Get groups for a user (both as leader and member)
+  async getUserGroups(userId) {
     try {
-      const { data, error } = await supabase
-        .from('teams')
+      // Get groups where user is leader
+      const { data: leaderGroups, error: leaderError } = await supabase
+        .from('groups')
         .select(`
           *,
-          team_members (
+          group_members (
             id
           )
         `)
-        .eq('coach_id', coachId);
+        .eq('leader_id', userId);
 
-      if (error) throw error;
-      
-      // Add member count to each team
-      const teamsWithCount = data?.map(team => ({
-        ...team,
-        member_count: team.team_members?.length || 0
-      })) || [];
+      if (leaderError) throw leaderError;
 
-      return teamsWithCount;
-    } catch (error) {
-      console.error('Error getting coach teams:', error);
-      return [];
-    }
-  },
-
-  // Get teams for a user (as a member)
-  async getUserTeams(userId) {
-    try {
-      const { data, error } = await supabase
-        .from('team_members')
+      // Get groups where user is a member
+      const { data: memberGroups, error: memberError } = await supabase
+        .from('groups')
         .select(`
           *,
-          teams (
-            *,
-            team_members (
-              id
-            )
+          group_members!inner (
+            id,
+            player_id
           )
         `)
-        .eq('player_id', userId);
+        .eq('group_members.player_id', userId);
 
-      if (error) throw error;
-      
-      // Extract teams and add member count
-      const teams = data?.map(membership => ({
-        ...membership.teams,
-        member_count: membership.teams.team_members?.length || 0
-      })) || [];
+      if (memberError) throw memberError;
 
-      return teams;
+      // Combine and deduplicate groups
+      const allGroups = [...(leaderGroups || []), ...(memberGroups || [])];
+      const uniqueGroups = allGroups.filter((group, index, self) => 
+        index === self.findIndex(g => g.id === group.id)
+      );
+
+      // Add member count to each group
+      const groupsWithCount = uniqueGroups.map(group => ({
+        ...group,
+        member_count: group.group_members?.length || 0,
+        user_role: leaderGroups?.some(lg => lg.id === group.id) ? 'leader' : 'member'
+      }));
+
+      return groupsWithCount;
     } catch (error) {
-      console.error('Error getting user teams:', error);
+      console.error('Error getting user groups:', error);
       return [];
     }
   },
 
-  // Get team members
-  async getTeamMembers(teamId) {
+  // Keep the old function for backward compatibility
+  async getLeaderGroups(leaderId) {
+    return this.getUserGroups(leaderId);
+  },
+
+  // Create an invite link for a group
+  async createInviteLink(groupId, createdBy, options = {}) {
     try {
       const { data, error } = await supabase
-        .from('team_members')
+        .from('group_invite_links')
+        .insert([{
+          group_id: groupId,
+          created_by: createdBy,
+          max_uses: options.maxUses || null,
+          expires_at: options.expiresAt || null
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error creating invite link:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Get invite links for a group
+  async getGroupInviteLinks(groupId) {
+    try {
+      const { data, error } = await supabase
+        .from('group_invite_links')
+        .select(`
+          *,
+          profiles!group_invite_links_created_by_fkey (
+            name
+          )
+        `)
+        .eq('group_id', groupId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error getting invite links:', error);
+      return [];
+    }
+  },
+
+  // Use an invite link
+  async useInviteLink(token) {
+    try {
+      const { data, error } = await supabase.rpc('use_invite_link', {
+        token: token
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error using invite link:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Deactivate an invite link
+  async deactivateInviteLink(linkId) {
+    try {
+      const { error } = await supabase
+        .from('group_invite_links')
+        .update({ is_active: false })
+        .eq('id', linkId);
+
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Error deactivating invite link:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+
+  // Get group members
+  async getGroupMembers(groupId) {
+    try {
+      const { data, error } = await supabase
+        .from('group_members')
         .select(`
           *,
           profiles (
@@ -98,7 +171,7 @@ export const teamService = {
             role
           )
         `)
-        .eq('team_id', teamId);
+        .eq('group_id', groupId);
 
       if (error) throw error;
       return { success: true, data };
@@ -107,13 +180,13 @@ export const teamService = {
     }
   },
 
-  // Add player to team
-  async addPlayerToTeam(teamId, playerId, position = null) {
+  // Add player to group
+  async addPlayerToGroup(groupId, playerId, position = null) {
     try {
       const { data, error } = await supabase
-        .from('team_members')
+        .from('group_members')
         .insert([{
-          team_id: teamId,
+          group_id: groupId,
           player_id: playerId,
           position: position,
           joined_at: new Date().toISOString()
@@ -128,14 +201,14 @@ export const teamService = {
     }
   },
 
-  // Find team by join code
-  async findTeamByJoinCode(joinCode) {
+  // Find group by join code
+  async findGroupByJoinCode(joinCode) {
     try {
       const { data, error } = await supabase
-        .from('teams')
+        .from('groups')
         .select(`
           *,
-          profiles!teams_coach_id_fkey (
+          profiles!groups_leader_id_fkey (
             id,
             name,
             email
@@ -147,18 +220,18 @@ export const teamService = {
       if (error) throw error;
       return data;
     } catch (error) {
-      console.error('Error finding team by join code:', error);
+      console.error('Error finding group by join code:', error);
       return null;
     }
   },
 
   // Create join request
-  async createJoinRequest(teamId, userId, requestType, playerId = null, message = '') {
+  async createJoinRequest(groupId, userId, requestType, playerId = null, message = '') {
     try {
       const { data, error } = await supabase
-        .from('team_join_requests')
+        .from('group_join_requests')
         .insert([{
-          team_id: teamId,
+          group_id: groupId,
           user_id: userId,
           request_type: requestType,
           player_id: playerId,
@@ -174,33 +247,33 @@ export const teamService = {
     }
   },
 
-  // Get join requests for a team
-  async getTeamJoinRequests(teamId) {
+  // Get join requests for a group
+  async getGroupJoinRequests(groupId) {
     try {
       const { data, error } = await supabase
-        .from('team_join_requests')
+        .from('group_join_requests')
         .select(`
           *,
-          profiles!team_join_requests_user_id_fkey (
+          profiles!group_join_requests_user_id_fkey (
             id,
             name,
             email,
             role
           ),
-          player_profile:profiles!team_join_requests_player_id_fkey (
+          player_profile:profiles!group_join_requests_player_id_fkey (
             id,
             name,
             email
           )
         `)
-        .eq('team_id', teamId)
+        .eq('group_id', groupId)
         .eq('status', 'pending')
         .order('requested_at', { ascending: false });
 
       if (error) throw error;
       return data || [];
     } catch (error) {
-      console.error('Error getting team join requests:', error);
+      console.error('Error getting group join requests:', error);
       return [];
     }
   },
@@ -209,7 +282,7 @@ export const teamService = {
   async processJoinRequest(requestId, status, processedBy) {
     try {
       const { data, error } = await supabase
-        .from('team_join_requests')
+        .from('group_join_requests')
         .update({
           status: status,
           processed_at: new Date().toISOString(),
@@ -221,11 +294,11 @@ export const teamService = {
 
       if (error) throw error;
 
-      // If approved, add to team_members
+      // If approved, add to group_members
       if (status === 'approved') {
         const playerId = data.request_type === 'player' ? data.user_id : data.player_id;
         if (playerId) {
-          await this.addPlayerToTeam(data.team_id, playerId);
+          await this.addPlayerToGroup(data.group_id, playerId);
         }
       }
 
@@ -246,7 +319,7 @@ export const messageService = {
         .insert([{
           sender_id: messageData.sender_id,
           recipient_id: messageData.recipient_id,
-          team_id: messageData.team_id,
+          group_id: messageData.group_id,
           content: messageData.content,
           message_type: messageData.message_type || 'direct',
           sent_at: new Date().toISOString()
@@ -310,26 +383,26 @@ export const messageService = {
     }
   },
 
-  // Get messagable contacts based on user role and team relationships
+  // Get messagable contacts based on user role and group relationships
   async getMessagableContacts(userId, userRole) {
     try {
       console.log('Getting messagable contacts for:', userId, userRole);
       if (userRole === 'coach') {
-        // Get all parents of players on coach's teams using the new relationship table
+        // Get all parents of players on leader's groups using the new relationship table
         const { data, error } = await supabase
-          .from('team_members')
+          .from('group_members')
           .select(`
             *,
-            teams!inner (
+            groups!inner (
               id,
               name,
-              coach_id
+              leader_id
             )
           `)
-          .eq('teams.coach_id', userId);
+          .eq('groups.leader_id', userId);
 
         if (error) throw error;
-        console.log('Team members for coach:', data);
+        console.log('Group members for leader:', data);
 
         // Get parent relationships separately
         const playerIds = data?.map(member => member.player_id) || [];
@@ -368,7 +441,7 @@ export const messageService = {
         console.log('Final parents list:', parents);
         return parents;
       } else if (userRole === 'parent') {
-        // For parents, get coaches of teams their children are on
+        // For parents, get leaders of groups their children are on
         const { data: relationships, error: relError } = await supabase
           .from('parent_player_relationships')
           .select(`
@@ -382,14 +455,14 @@ export const messageService = {
         if (playerIds.length === 0) return [];
 
         const { data, error } = await supabase
-          .from('team_members')
+          .from('group_members')
           .select(`
             *,
-            teams!inner (
+            groups!inner (
               id,
               name,
-              coach_id,
-              profiles!teams_coach_id_fkey (
+              leader_id,
+              profiles!groups_leader_id_fkey (
                 id,
                 name,
                 email,
@@ -401,30 +474,30 @@ export const messageService = {
 
         if (error) throw error;
 
-        // Extract unique coaches
-        const coaches = [];
-        const seenCoachIds = new Set();
+        // Extract unique leaders
+        const leaders = [];
+        const seenLeaderIds = new Set();
 
         data?.forEach(membership => {
-          const coach = membership.teams.profiles;
-          if (coach && !seenCoachIds.has(coach.id)) {
-            coaches.push(coach);
-            seenCoachIds.add(coach.id);
+          const leader = membership.groups.profiles;
+          if (leader && !seenLeaderIds.has(leader.id)) {
+            leaders.push(leader);
+            seenLeaderIds.add(leader.id);
           }
         });
 
-        return coaches;
+        return leaders;
       } else {
-        // For players, get their coaches
+        // For players, get their leaders
         const { data, error } = await supabase
-          .from('team_members')
+          .from('group_members')
           .select(`
             *,
-            teams!inner (
+            groups!inner (
               id,
               name,
-              coach_id,
-              profiles!teams_coach_id_fkey (
+              leader_id,
+              profiles!groups_leader_id_fkey (
                 id,
                 name,
                 email,
@@ -436,8 +509,8 @@ export const messageService = {
 
         if (error) throw error;
 
-        const coaches = data?.map(member => member.teams.profiles).filter(Boolean) || [];
-        return coaches;
+        const leaders = data?.map(member => member.groups.profiles).filter(Boolean) || [];
+        return leaders;
       }
     } catch (error) {
       console.error('Error getting messagable contacts:', error);
@@ -667,6 +740,212 @@ export const statsService = {
       if (error) throw error;
       return { success: true, data };
     } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+};
+
+// Feed Service Functions
+export const feedService = {
+  // Get posts for a group with recent comments
+  async getGroupPosts(groupId) {
+    try {
+      // First get the posts
+      const { data: posts, error } = await supabase
+        .from('group_posts_with_stats')
+        .select('*')
+        .eq('group_id', groupId)
+        .order('is_pinned', { ascending: false })
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Then get recent comments for each post (max 5 per post)
+      const postsWithComments = await Promise.all(
+        (posts || []).map(async (post) => {
+          const { data: recentComments } = await supabase
+            .from('post_comments')
+            .select(`
+              *,
+              profiles!post_comments_author_id_fkey (
+                id,
+                name,
+                role
+              )
+            `)
+            .eq('post_id', post.id)
+            .order('created_at', { ascending: false })
+            .limit(5);
+
+          return {
+            ...post,
+            recent_comments: recentComments || []
+          };
+        })
+      );
+
+      return postsWithComments;
+    } catch (error) {
+      console.error('Error getting group posts:', error);
+      return [];
+    }
+  },
+
+  // Create a new post
+  async createPost(postData) {
+    try {
+      const { data, error } = await supabase
+        .from('group_posts')
+        .insert([{
+          group_id: postData.group_id,
+          author_id: postData.author_id,
+          content: postData.content,
+          post_type: postData.post_type || 'text',
+          image_url: postData.image_url,
+          video_url: postData.video_url,
+          link_url: postData.link_url,
+          link_title: postData.link_title,
+          link_description: postData.link_description,
+          is_pinned: postData.is_pinned || false
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error creating post:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Like/unlike a post
+  async togglePostLike(postId, userId) {
+    try {
+      // Check if already liked
+      const { data: existingLike } = await supabase
+        .from('post_likes')
+        .select('id')
+        .eq('post_id', postId)
+        .eq('user_id', userId)
+        .single();
+
+      if (existingLike) {
+        // Unlike the post
+        const { error } = await supabase
+          .from('post_likes')
+          .delete()
+          .eq('post_id', postId)
+          .eq('user_id', userId);
+
+        if (error) throw error;
+        return { success: true, liked: false };
+      } else {
+        // Like the post
+        const { error } = await supabase
+          .from('post_likes')
+          .insert([{ post_id: postId, user_id: userId }]);
+
+        if (error) throw error;
+        return { success: true, liked: true };
+      }
+    } catch (error) {
+      console.error('Error toggling post like:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Get comments for a post
+  async getPostComments(postId) {
+    try {
+      const { data, error } = await supabase
+        .from('post_comments')
+        .select(`
+          *,
+          profiles!post_comments_author_id_fkey (
+            id,
+            name,
+            role
+          )
+        `)
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error getting post comments:', error);
+      return [];
+    }
+  },
+
+  // Create a comment
+  async createComment(commentData) {
+    try {
+      const { data, error } = await supabase
+        .from('post_comments')
+        .insert([{
+          post_id: commentData.post_id,
+          author_id: commentData.author_id,
+          content: commentData.content,
+          parent_comment_id: commentData.parent_comment_id
+        }])
+        .select(`
+          *,
+          profiles!post_comments_author_id_fkey (
+            id,
+            name,
+            role
+          )
+        `)
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error creating comment:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Delete a post
+  async deletePost(postId, userId) {
+    try {
+      const { error } = await supabase
+        .from('group_posts')
+        .delete()
+        .eq('id', postId);
+
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Pin/unpin a post (leaders only)
+  async togglePostPin(postId, userId) {
+    try {
+      // First get the current pin status
+      const { data: post, error: fetchError } = await supabase
+        .from('group_posts')
+        .select('is_pinned')
+        .eq('id', postId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Toggle the pin status
+      const { error } = await supabase
+        .from('group_posts')
+        .update({ is_pinned: !post.is_pinned })
+        .eq('id', postId);
+
+      if (error) throw error;
+      return { success: true, pinned: !post.is_pinned };
+    } catch (error) {
+      console.error('Error toggling post pin:', error);
       return { success: false, error: error.message };
     }
   }

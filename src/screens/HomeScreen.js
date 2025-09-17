@@ -31,7 +31,7 @@ const HomeScreen = ({ navigation }) => {
         content: 'Tomorrow\'s practice has been moved to 4:00 PM due to field maintenance.',
         author: 'Coach Johnson',
         timestamp: '2 hours ago',
-        teamName: 'Eagles U12',
+        groupName: 'Eagles U12',
       },
       {
         id: '2',
@@ -40,7 +40,7 @@ const HomeScreen = ({ navigation }) => {
         content: 'Congratulations to Sarah M. for scoring the winning goal in yesterday\'s match!',
         author: 'Coach Martinez',
         timestamp: '5 hours ago',
-        teamName: 'Lions U14',
+        groupName: 'Lions U14',
       },
       {
         id: '3',
@@ -49,7 +49,7 @@ const HomeScreen = ({ navigation }) => {
         content: 'Regional championship registration is now open. Deadline: March 15th.',
         author: 'League Admin',
         timestamp: '1 day ago',
-        teamName: 'All Teams',
+        groupName: 'All Groups',
       },
     ];
     setPosts(mockPosts);
@@ -95,7 +95,7 @@ const HomeScreen = ({ navigation }) => {
         </View>
         <View style={styles.postInfo}>
           <Text style={styles.postTitle}>{post.title}</Text>
-          <Text style={styles.postMeta}>{post.author} • {post.teamName}</Text>
+          <Text style={styles.postMeta}>{post.author} • {post.groupName}</Text>
         </View>
         <Text style={styles.postTime}>{post.timestamp}</Text>
       </View>
@@ -111,10 +111,10 @@ const HomeScreen = ({ navigation }) => {
           <>
             <TouchableOpacity 
               style={[styles.actionButton, { backgroundColor: '#FF6B35' }]}
-              onPress={() => navigation.navigate('CreateTeam')}
+              onPress={() => navigation.navigate('CreateGroup')}
             >
               <Ionicons name="people" size={24} color="#fff" />
-              <Text style={styles.actionText}>Create Team</Text>
+              <Text style={styles.actionText}>Create Group</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.actionButton, { backgroundColor: '#4ECDC4' }]}
@@ -169,7 +169,7 @@ const HomeScreen = ({ navigation }) => {
         <QuickActions />
 
         <View style={styles.feedSection}>
-          <Text style={styles.sectionTitle}>Team Feed</Text>
+          <Text style={styles.sectionTitle}>Group Feed</Text>
           {posts.map((post) => (
             <PostCard key={post.id} post={post} />
           ))}
