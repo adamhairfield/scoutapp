@@ -170,6 +170,7 @@ SELECT
   gp.*,
   p.name as author_name,
   p.role as author_role,
+  p.profile_picture_url as author_profile_picture_url,
   (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = gp.id) as like_count,
   (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = gp.id) as comment_count,
   EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = gp.id AND pl.user_id = auth.uid()) as user_liked

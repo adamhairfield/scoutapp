@@ -2,33 +2,217 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  ScrollView,
-  TouchableOpacity,
   StyleSheet,
-  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Dimensions,
   Alert,
-  Switch,
+  TextInput,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
+import ProfilePictureUpload from '../components/ProfilePictureUpload';
+import AppHeader from '../components/AppHeader';
+import { profileService } from '../services/profileService';
+import { friendsService } from '../services/friendsService';
+import { groupService } from '../services/database';
+
+const { width } = Dimensions.get('window');
 
 const ProfileScreen = ({ navigation }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUserProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState(user.name || 'Adam Hairfield');
+  const [profilePictureUrl, setProfilePictureUrl] = useState(user.profile_picture_url || null);
+  const [friendsCount, setFriendsCount] = useState(0);
+  const [groupsCount, setGroupsCount] = useState(0);
+  const [isEditingBio, setIsEditingBio] = useState(false);
+  const [editedBio, setEditedBio] = useState('');
   const [profileData, setProfileData] = useState({
-    name: user.name || '',
-    bio: 'Passionate soccer player with 5 years of experience. Love teamwork and always ready to give my best!',
-    position: 'Midfielder',
-    jerseyNumber: '10',
-    achievements: ['MVP 2023', 'Top Scorer Regional League', 'Team Captain'],
-    stats: {
-      goals: 24,
-      assists: 12,
-      gamesPlayed: 18,
-    },
+    name: user.name || 'Adam Hairfield',
+    coverPhoto: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=800&h=600&fit=crop',
+    friends: '0',
+    groups: '0',
+    bio: '',
     isPublic: true,
   });
+
+  // Load user profile on component mount
+  React.useEffect(() => {
+    loadUserProfile();
+    loadFriendsCount();
+    loadGroupsCount();
+  }, []);
+
+  // Debug: Log editing state changes
+  React.useEffect(() => {
+    console.log('isEditingName changed to:', isEditingName);
+  }, [isEditingName]);
+
+  // Handle status bar when screen is focused/unfocused
+  useFocusEffect(
+    React.useCallback(() => {
+      // Set white status bar when screen is focused
+      StatusBar.setBarStyle('light-content');
+      
+      // Refresh counts when screen is focused
+      refreshCounts();
+      
+      return () => {
+        // Reset to dark status bar when screen is unfocused
+        StatusBar.setBarStyle('dark-content');
+      };
+    }, [])
+  );
+
+  const loadUserProfile = async () => {
+    try {
+      const result = await profileService.getUserProfile(user.id);
+      if (result.success && result.data) {
+        setProfilePictureUrl(result.data.profile_picture_url);
+        setProfileData(prev => ({
+          ...prev,
+          name: result.data.name || prev.name,
+          bio: result.data.bio || prev.bio,
+        }));
+        setEditedBio(result.data.bio || '');
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    }
+  };
+
+  const loadFriendsCount = async () => {
+    try {
+      const result = await friendsService.getFriends(user.id);
+      if (result.success) {
+        setFriendsCount(result.data.length);
+      }
+    } catch (error) {
+      console.error('Error loading friends count:', error);
+    }
+  };
+
+  const loadGroupsCount = async () => {
+    try {
+      const groups = await groupService.getUserGroups(user.id);
+      setGroupsCount(groups.length);
+    } catch (error) {
+      console.error('Error loading groups count:', error);
+    }
+  };
+
+  const refreshCounts = async () => {
+    await Promise.all([
+      loadFriendsCount(),
+      loadGroupsCount()
+    ]);
+  };
+
+  const handleProfilePictureUpdate = async (newUrl) => {
+    setProfilePictureUrl(newUrl);
+    // Refresh the user profile in AuthContext so the avatar updates throughout the app
+    await refreshUserProfile();
+  };
+
+  const handleNameLongPress = () => {
+    console.log('Name long press detected!');
+    Alert.alert(
+      'Edit Name',
+      'Would you like to edit your name?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Edit', onPress: () => setIsEditingName(true) }
+      ]
+    );
+  };
+
+  const handleBioLongPress = () => {
+    console.log('Bio long press detected!');
+    Alert.alert(
+      'Edit Bio',
+      'Would you like to edit your bio?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Edit', onPress: () => setIsEditingBio(true) }
+      ]
+    );
+  };
+
+  const handleNameSave = async () => {
+    console.log('handleNameSave called!');
+    console.log('Current editedName:', editedName);
+    console.log('User object:', user);
+    
+    if (!editedName.trim()) {
+      console.log('Name is empty, showing error');
+      Alert.alert('Error', 'Name cannot be empty');
+      return;
+    }
+
+    try {
+      console.log('Saving name:', editedName.trim(), 'for user:', user.id);
+      
+      // Update name in database
+      const result = await profileService.updateProfileName(user.id, editedName.trim());
+      
+      if (result.success) {
+        console.log('Name update successful, updating local state');
+        
+        // Update local state
+        setProfileData(prev => ({ ...prev, name: editedName.trim() }));
+        setIsEditingName(false);
+        
+        // Refresh user profile in AuthContext to update throughout app
+        console.log('Refreshing user profile in AuthContext');
+        await refreshUserProfile();
+        
+        Alert.alert('Success', 'Name updated successfully!');
+      } else {
+        console.error('Name update failed:', result.error);
+        Alert.alert('Error', result.error || 'Failed to update name');
+      }
+    } catch (error) {
+      console.error('Error updating name:', error);
+      Alert.alert('Error', 'Failed to update name');
+    }
+  };
+
+  const handleNameCancel = () => {
+    console.log('handleNameCancel called');
+    setEditedName(profileData.name);
+    setIsEditingName(false);
+  };
+
+  const handleBioSave = async () => {
+    try {
+      const result = await profileService.updateUserBio(user.id, editedBio);
+      
+      if (result.success) {
+        setProfileData(prev => ({
+          ...prev,
+          bio: editedBio
+        }));
+        setIsEditingBio(false);
+        Alert.alert('Success', 'Bio updated successfully!');
+      } else {
+        Alert.alert('Error', result.error || 'Failed to update bio');
+      }
+    } catch (error) {
+      console.error('Error saving bio:', error);
+      Alert.alert('Error', 'Failed to update bio');
+    }
+  };
+
+  const handleBioCancel = () => {
+    setEditedBio(profileData.bio);
+    setIsEditingBio(false);
+  };
 
   const handleSave = () => {
     setIsEditing(false);
@@ -62,331 +246,396 @@ const ProfileScreen = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView style={styles.scrollContainer}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.title}>My Profile</Text>
-        <TouchableOpacity
-          style={styles.editButton}
-          onPress={() => setIsEditing(!isEditing)}
-        >
-          <Ionicons name={isEditing ? "checkmark" : "create"} size={24} color="#667eea" />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.profileSection}>
-        <View style={styles.avatarContainer}>
-          <View style={styles.avatar}>
-            <Ionicons name="person" size={40} color="#667eea" />
-          </View>
-          <View style={styles.jerseyNumber}>
-            <Text style={styles.jerseyText}>#{profileData.jerseyNumber}</Text>
-          </View>
-        </View>
-
-        <View style={styles.basicInfo}>
-          {isEditing ? (
-            <TextInput
-              style={styles.nameInput}
-              value={profileData.name}
-              onChangeText={(text) => setProfileData({...profileData, name: text})}
-              placeholder="Your name"
-            />
-          ) : (
-            <Text style={styles.playerName}>{profileData.name}</Text>
-          )}
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        {/* Cover Photo Header */}
+        <View style={styles.coverContainer}>
+          <ProfilePictureUpload
+            userId={user.id}
+            currentImageUrl={profilePictureUrl || profileData.coverPhoto}
+            onImageUpdate={handleProfilePictureUpdate}
+            style={styles.coverImageContainer}
+            size={width}
+            isCoverPhoto={true}
+          />
+          {/* Top gradient for header visibility */}
+          <LinearGradient
+            colors={['rgba(0,0,0,0.4)', 'transparent']}
+            style={styles.topGradient}
+          />
           
-          <Text style={styles.userRole}>
-            {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-          </Text>
+          {/* Bottom gradient for stats visibility */}
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.7)']}
+            style={styles.coverOverlay}
+          />
+          
+          {/* Header */}
+          <AppHeader 
+            navigation={navigation}
+            title="Scout"
+            rightIcon="menu"
+            onRightPress={() => navigation.navigate('Settings')}
+          />
 
-          {user.role === 'player' && (
-            <Text style={styles.position}>{profileData.position}</Text>
-          )}
-        </View>
-
-        {user.role === 'player' && (
-          <View style={styles.publicToggle}>
-            <Text style={styles.toggleLabel}>Public Profile</Text>
-            <Switch
-              value={profileData.isPublic}
-              onValueChange={(value) => setProfileData({...profileData, isPublic: value})}
-              trackColor={{ false: '#e9ecef', true: '#667eea' }}
-              thumbColor={profileData.isPublic ? '#fff' : '#f4f3f4'}
-            />
-          </View>
-        )}
-      </View>
-
-      {user.role === 'player' && (
-        <>
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Season Stats</Text>
-            <View style={styles.statsContainer}>
-              <StatCard label="Goals" value={profileData.stats.goals} icon="football" />
-              <StatCard label="Assists" value={profileData.stats.assists} icon="hand-left" />
-              <StatCard label="Games" value={profileData.stats.gamesPlayed} icon="calendar" />
+          {/* Stats Overlay */}
+          <View style={styles.statsOverlay}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{friendsCount}</Text>
+              <Text style={styles.statLabel}>Friends</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{groupsCount}</Text>
+              <Text style={styles.statLabel}>Groups</Text>
             </View>
           </View>
+        </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Bio</Text>
-            {isEditing ? (
-              <TextInput
-                style={styles.bioInput}
-                value={profileData.bio}
-                onChangeText={(text) => setProfileData({...profileData, bio: text})}
-                placeholder="Tell us about yourself..."
-                multiline
-                numberOfLines={4}
-              />
+        {/* Profile Info */}
+        <View style={styles.profileInfo}>
+          <View style={styles.nameSection}>
+            {isEditingName ? (
+              <View style={styles.nameEditContainer}>
+                <TextInput
+                  style={styles.nameInput}
+                  value={editedName}
+                  onChangeText={(text) => {
+                    console.log('Name text changed to:', text);
+                    setEditedName(text);
+                  }}
+                  autoFocus={true}
+                  selectTextOnFocus={true}
+                  onSubmitEditing={() => {
+                    console.log('Enter key pressed in text input');
+                    handleNameSave();
+                  }}
+                  placeholder="Enter your name"
+                  maxLength={50}
+                />
+                <View style={styles.nameEditActions}>
+                  <TouchableOpacity 
+                    style={styles.nameActionButton} 
+                    onPress={() => {
+                      console.log('Cancel button pressed');
+                      handleNameCancel();
+                    }}
+                  >
+                    <Ionicons name="close" size={16} color="#FF3B30" />
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.nameActionButton} 
+                    onPress={() => {
+                      console.log('Save button pressed');
+                      handleNameSave();
+                    }}
+                  >
+                    <Ionicons name="checkmark" size={16} color="#34C759" />
+                  </TouchableOpacity>
+                </View>
+              </View>
             ) : (
-              <Text style={styles.bioText}>{profileData.bio}</Text>
+              <TouchableOpacity
+                onLongPress={handleNameLongPress}
+                delayLongPress={500}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.profileName}>{profileData.name}</Text>
+              </TouchableOpacity>
+            )}
+            <Ionicons name="checkmark-circle" size={20} color="#1DA1F2" style={styles.verifiedIcon} />
+          </View>
+      
+          {/* Bio Section */}
+          <View style={styles.bioSection}>
+            {isEditingBio ? (
+              <View style={styles.bioEditContainer}>
+                <TextInput
+                  style={styles.bioInput}
+                  value={editedBio}
+                  onChangeText={setEditedBio}
+                  placeholder="Tell us about yourself..."
+                  multiline
+                  maxLength={200}
+                  textAlignVertical="top"
+                />
+                <View style={styles.bioActions}>
+                  <TouchableOpacity 
+                    style={styles.bioActionButton} 
+                    onPress={handleBioCancel}
+                  >
+                    <Ionicons name="close" size={16} color="#FF3B30" />
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.bioActionButton} 
+                    onPress={handleBioSave}
+                  >
+                    <Ionicons name="checkmark" size={16} color="#34C759" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onLongPress={handleBioLongPress}
+                delayLongPress={500}
+                activeOpacity={0.8}
+                style={styles.bioContainer}
+              >
+                <Text style={styles.bioText}>
+                  {profileData.bio || 'Long press to add your bio...'}
+                </Text>
+              </TouchableOpacity>
             )}
           </View>
+        </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Achievements</Text>
-            <View style={styles.achievementsContainer}>
-              {profileData.achievements.map((achievement, index) => (
-                <AchievementBadge key={index} achievement={achievement} />
-              ))}
-            </View>
-          </View>
-        </>
-      )}
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Settings</Text>
-        {(user.role === 'parent' || user.role === 'player') && (
-          <TouchableOpacity 
-            style={styles.settingItem}
-            onPress={() => navigation.navigate('ManageRelationships')}
-          >
-            <Ionicons name="people" size={24} color="#666" />
-            <Text style={styles.settingText}>
-              {user.role === 'parent' ? 'Manage Children' : 'Manage Parents'}
-            </Text>
+        {/* Settings Section */}
+        <View style={styles.settingsSection}>
+          <TouchableOpacity style={styles.settingItem} onPress={handleLogout}>
+            <Ionicons name="log-out" size={24} color="#FF3B30" />
+            <Text style={[styles.settingText, { color: '#FF3B30' }]}>Logout</Text>
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
-        )}
-        <TouchableOpacity style={styles.settingItem}>
-          <Ionicons name="notifications" size={24} color="#666" />
-          <Text style={styles.settingText}>Notifications</Text>
-          <Ionicons name="chevron-forward" size={20} color="#999" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.settingItem}>
-          <Ionicons name="shield-checkmark" size={24} color="#666" />
-          <Text style={styles.settingText}>Privacy</Text>
-          <Ionicons name="chevron-forward" size={20} color="#999" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.settingItem}>
-          <Ionicons name="help-circle" size={24} color="#666" />
-          <Text style={styles.settingText}>Help & Support</Text>
-          <Ionicons name="chevron-forward" size={20} color="#999" />
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Ionicons name="log-out" size={24} color="#FF6B35" />
-        <Text style={styles.logoutText}>Logout</Text>
-      </TouchableOpacity>
-
-      {isEditing && (
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>Save Changes</Text>
-        </TouchableOpacity>
-      )}
+        </View>
       </ScrollView>
-    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#fff',
   },
   scrollContainer: {
     flex: 1,
   },
-  header: {
+  coverContainer: {
+    height: 400,
+    position: 'relative',
+  },
+  coverImageContainer: {
+    width: '100%',
+    height: '100%',
+  },
+  coverImage: {
+    width: '100%',
+    height: '100%',
+  },
+  topGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 120,
+    zIndex: 1,
+  },
+  coverOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 150,
+    zIndex: 1,
+  },
+  headerIcons: {
+    position: 'absolute',
+    top: 60,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    zIndex: 2,
+  },
+  headerIcon: {
+    padding: 10,
+  },
+  logoText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    fontStyle: 'italic',
+  },
+  statsOverlay: {
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 30,
+    zIndex: 2,
+  },
+  statItem: {
+    alignItems: 'flex-start',
+  },
+  statNumber: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  statLabel: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 14,
+    marginTop: 2,
+  },
+  profileInfo: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  nameSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
+    marginBottom: 8,
   },
-  backButton: {
-    padding: 5,
-  },
-  title: {
+  profileName: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
+    marginRight: 8,
   },
-  editButton: {
-    padding: 5,
+  verifiedIcon: {
+    marginTop: 2,
   },
-  profileSection: {
-    backgroundColor: '#fff',
-    padding: 20,
+  nameEditContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
+    flex: 1,
+    marginRight: 8,
   },
-  avatarContainer: {
-    position: 'relative',
-    marginBottom: 15,
+  nameInput: {
+    flex: 1,
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    borderBottomWidth: 2,
+    borderBottomColor: '#667eea',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    marginRight: 8,
   },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#f0f0f0',
+  nameEditActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  nameActionButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#f8f9fa',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  profileTitle: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 4,
+  },
+  websiteLink: {
+    fontSize: 16,
+    color: '#007AFF',
+    textDecorationLine: 'underline',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    marginBottom: 20,
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#f8f9fa',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
   },
-  jerseyNumber: {
-    position: 'absolute',
-    bottom: -5,
-    right: -5,
+  actionButtonText: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
+    marginLeft: 6,
+  },
+  friendsIconContainer: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: '#667eea',
-    borderRadius: 15,
-    width: 30,
-    height: 30,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  jerseyText: {
+  friendsIcon: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  shareSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  shareText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#666',
+  },
+  messageButton: {
+    position: 'relative',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FF3B30',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notificationText: {
     color: '#fff',
     fontSize: 12,
     fontWeight: 'bold',
   },
-  basicInfo: {
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  playerName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
-  },
-  nameInput: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#667eea',
-    paddingBottom: 5,
-    marginBottom: 5,
-  },
-  userRole: {
-    fontSize: 16,
-    color: '#667eea',
-    fontWeight: '600',
-  },
-  position: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 5,
-  },
-  publicToggle: {
+  postOptions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 15,
+    paddingHorizontal: 20,
+    marginBottom: 30,
+    gap: 20,
   },
-  toggleLabel: {
-    fontSize: 16,
-    color: '#333',
-    marginRight: 10,
-  },
-  section: {
-    backgroundColor: '#fff',
-    margin: 15,
-    padding: 20,
-    borderRadius: 15,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 15,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  statCard: {
+  postOption: {
     flex: 1,
     alignItems: 'center',
-    padding: 15,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    marginHorizontal: 5,
   },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginTop: 5,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 5,
-  },
-  bioText: {
-    fontSize: 16,
-    color: '#555',
-    lineHeight: 24,
-  },
-  bioInput: {
-    fontSize: 16,
-    color: '#555',
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-    borderRadius: 12,
-    padding: 15,
-    textAlignVertical: 'top',
-    minHeight: 100,
-  },
-  achievementsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  achievementBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF9E6',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 10,
-    marginBottom: 10,
-  },
-  achievementText: {
+  postOptionText: {
     fontSize: 14,
-    color: '#B8860B',
-    marginLeft: 5,
-    fontWeight: '600',
+    color: '#333',
+    marginTop: 8,
+    fontWeight: '500',
+  },
+  settingsSection: {
+    backgroundColor: '#fff',
+    marginHorizontal: 20,
+    borderRadius: 12,
+    marginBottom: 30,
   },
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    paddingHorizontal: 20,
   },
   settingText: {
     flex: 1,
@@ -394,34 +643,55 @@ const styles = StyleSheet.create({
     color: '#333',
     marginLeft: 15,
   },
-  logoutButton: {
+  bioSection: {
+    marginTop: 0,
+  },
+  bioContainer: {
+    paddingHorizontal: 0,
+    paddingVertical: 5,
+  },
+  bioText: {
+    fontSize: 16,
+    color: '#333',
+    lineHeight: 22,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  bioEditContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 10,
+    padding: 15,
+  },
+  bioInput: {
+    fontSize: 15,
+    color: '#333',
+    lineHeight: 22,
+    minHeight: 80,
+    textAlignVertical: 'top',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    padding: 10,
+    backgroundColor: '#fff',
+  },
+  bioActions: {
     flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 10,
+    gap: 10,
+  },
+  bioActionButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
-    margin: 15,
-    padding: 20,
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: '#FF6B35',
-  },
-  logoutText: {
-    fontSize: 16,
-    color: '#FF6B35',
-    fontWeight: '600',
-    marginLeft: 10,
-  },
-  saveButton: {
-    backgroundColor: '#667eea',
-    margin: 15,
-    padding: 15,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
 });
 

@@ -12,7 +12,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../contexts/AuthContext';
+import { friendsService } from '../services/friendsService';
 import { messageService } from '../services/database';
+import Avatar from '../components/Avatar';
 
 const NewMessageScreen = ({ navigation }) => {
   const { user } = useAuth();
@@ -28,13 +30,18 @@ const NewMessageScreen = ({ navigation }) => {
   const loadContacts = async () => {
     try {
       setLoading(true);
-      console.log('Loading contacts for user:', user.id, 'role:', user.role);
-      const messagableContacts = await messageService.getMessagableContacts(user.id, user.role);
-      console.log('Loaded contacts:', messagableContacts);
-      setContacts(messagableContacts);
+      console.log('Loading friends for user:', user.id);
+      const result = await friendsService.getFriends(user.id);
+      if (result.success) {
+        console.log('Loaded friends:', result.data);
+        setContacts(result.data);
+      } else {
+        console.error('Failed to load friends:', result.error);
+        Alert.alert('Error', 'Failed to load friends');
+      }
     } catch (error) {
-      console.error('Error loading contacts:', error);
-      Alert.alert('Error', 'Failed to load contacts');
+      console.error('Error loading friends:', error);
+      Alert.alert('Error', 'Failed to load friends');
     } finally {
       setLoading(false);
     }
@@ -49,7 +56,7 @@ const NewMessageScreen = ({ navigation }) => {
     try {
       const messageData = {
         sender_id: user.id,
-        recipient_id: selectedContact.id,
+        recipient_id: selectedContact.friend_id,
         content: messageText.trim(),
         message_type: 'direct'
       };
@@ -73,22 +80,19 @@ const NewMessageScreen = ({ navigation }) => {
     <TouchableOpacity
       style={[
         styles.contactItem,
-        selectedContact?.id === item.id && styles.selectedContact
+        selectedContact?.friend_id === item.friend_id && styles.selectedContact
       ]}
       onPress={() => setSelectedContact(item)}
     >
-      <View style={styles.contactAvatar}>
-        <Text style={styles.contactInitial}>
-          {item.name?.charAt(0).toUpperCase() || '?'}
-        </Text>
-      </View>
+      <Avatar
+        imageUrl={item.friend_profile_picture_url}
+        name={item.friend_name}
+        size={50}
+      />
       <View style={styles.contactInfo}>
-        <Text style={styles.contactName}>{item.name}</Text>
-        <Text style={styles.contactRole}>
-          {item.role === 'parent' ? 'Parent' : 'Coach'}
-        </Text>
+        <Text style={styles.contactName}>{item.friend_name}</Text>
       </View>
-      {selectedContact?.id === item.id && (
+      {selectedContact?.friend_id === item.friend_id && (
         <Ionicons name="checkmark-circle" size={24} color="#667eea" />
       )}
     </TouchableOpacity>
@@ -117,13 +121,13 @@ const NewMessageScreen = ({ navigation }) => {
 
       <View style={styles.content}>
         <Text style={styles.sectionTitle}>
-          {user.role === 'coach' ? 'Select Parent to Message:' : 'Select Coach to Message:'}
+          Select Friend to Message:
         </Text>
         
         <FlatList
           data={contacts}
           renderItem={renderContact}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => item.friend_id.toString()}
           style={styles.contactsList}
           showsVerticalScrollIndicator={false}
         />
@@ -131,7 +135,7 @@ const NewMessageScreen = ({ navigation }) => {
         {selectedContact && (
           <View style={styles.messageSection}>
             <Text style={styles.messageLabel}>
-              Message to {selectedContact.name}:
+              Message to {selectedContact.friend_name}:
             </Text>
             <TextInput
               style={styles.messageInput}

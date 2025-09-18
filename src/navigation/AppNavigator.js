@@ -18,6 +18,10 @@ import MessagesScreen from '../screens/MessagesScreen';
 import NewMessageScreen from '../screens/NewMessageScreen';
 import ManageRelationshipsScreen from '../screens/ManageRelationshipsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+import UserSearchScreen from '../screens/UserSearchScreen';
+import FriendRequestsScreen from '../screens/FriendRequestsScreen';
+import SearchScreen from '../screens/SearchScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -55,20 +59,49 @@ const MainTabs = () => {
           backgroundColor: '#fff',
           borderTopWidth: 1,
           borderTopColor: '#e9ecef',
-          paddingBottom: 5,
-          paddingTop: 5,
-          height: 60,
+          paddingBottom: 25,
+          paddingTop: 8,
+          height: 85,
         },
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Messages" component={MessagesScreen} />
-      <Tab.Screen 
-        name="Groups" 
+      <Tab.Screen
+        name="Groups"
         component={GroupsScreen}
-        options={{ tabBarLabel: 'Groups' }}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="people-outline" size={size} color={color} />
+          ),
+        }}
       />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen
+        name="Messages"
+        component={MessagesScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="chatbubbles-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Search"
+        component={SearchScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="search-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-outline" size={size} color={color} />
+          ),
+        }}
+      />
     </Tab.Navigator>
   );
 };
@@ -96,6 +129,10 @@ const AppNavigator = () => {
             <Stack.Screen name="NewMessage" component={NewMessageScreen} />
             <Stack.Screen name="ManageRelationships" component={ManageRelationshipsScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen name="UserSearch" component={UserSearchScreen} />
+            <Stack.Screen name="FriendRequests" component={FriendRequestsScreen} />
+            <Stack.Screen name="Search" component={SearchScreen} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} />

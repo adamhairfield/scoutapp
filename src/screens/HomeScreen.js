@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import AppHeader from '../components/AppHeader';
 
 const HomeScreen = ({ navigation }) => {
   const { user } = useAuth();
@@ -148,23 +149,23 @@ const HomeScreen = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={styles.container}>
+      {/* Header */}
+      <AppHeader 
+        navigation={navigation}
+        title="Scout"
+        rightIcon="menu"
+        onRightPress={() => navigation.navigate('Settings')}
+        backgroundColor="#f8f9fa"
+        textColor="#333"
+      />
+
       <ScrollView 
-        style={styles.scrollContainer}
+        style={[styles.scrollContainer, { paddingTop: 100 }]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Welcome back,</Text>
-            <Text style={styles.userName}>{user.name}</Text>
-            <Text style={styles.userRole}>{user.role.charAt(0).toUpperCase() + user.role.slice(1)}</Text>
-          </View>
-          <TouchableOpacity style={styles.profileButton}>
-            <Ionicons name="person-circle" size={40} color="#667eea" />
-          </TouchableOpacity>
-        </View>
 
         <QuickActions />
 
@@ -175,7 +176,7 @@ const HomeScreen = ({ navigation }) => {
           ))}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -186,32 +187,6 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-  },
-  greeting: {
-    fontSize: 16,
-    color: '#666',
-  },
-  userName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  userRole: {
-    fontSize: 14,
-    color: '#667eea',
-    fontWeight: '600',
-  },
-  profileButton: {
-    padding: 5,
   },
   quickActions: {
     backgroundColor: '#fff',

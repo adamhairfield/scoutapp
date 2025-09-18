@@ -5,33 +5,79 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   FlatList,
-  Image,
   Alert,
   RefreshControl,
-  Clipboard,
+  Dimensions,
+  StatusBar,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { feedService, groupService } from '../services/database';
 import CreatePostInput from '../components/CreatePostInput';
 import CommentsModal from '../components/CommentsModal';
+import GroupOptionsModal from '../components/GroupOptionsModal';
+import Avatar from '../components/Avatar';
 
 const GroupDetailsScreen = ({ navigation, route }) => {
   const { group } = route.params;
   const { user } = useAuth();
+  
+  console.log('GroupDetailsScreen - Group data:', group);
+  console.log('GroupDetailsScreen - Cover photo URL:', group.cover_photo_url);
   const [activeTab, setActiveTab] = useState('Feed');
   const [posts, setPosts] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [commentsModalVisible, setCommentsModalVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
+  const [memberCount, setMemberCount] = useState(0);
+  const [members, setMembers] = useState([]);
+  const [optionsModalVisible, setOptionsModalVisible] = useState(false);
 
   useEffect(() => {
+    console.log('Group object:', group);
+    console.log('Group cover_photo_url:', group.cover_photo_url);
     loadGroupPosts();
-  }, []);
+    loadGroupMembers();
+  }, [group.id]);
+
+  // Handle status bar when screen is focused/unfocused
+  useFocusEffect(
+    useCallback(() => {
+      // Set white status bar when screen is focused
+      StatusBar.setBarStyle('light-content');
+      
+      return () => {
+        // Reset to dark status bar when screen is unfocused
+        StatusBar.setBarStyle('dark-content');
+      };
+    }, [])
+  );
+
+  const loadGroupMembers = async () => {
+    try {
+      const result = await groupService.getGroupMembers(group.id);
+      if (result.success) {
+        setMembers(result.data || []);
+        // Count includes the leader + members
+        const totalMembers = (result.data || []).length + 1; // +1 for the leader
+        setMemberCount(totalMembers);
+        console.log('Group members loaded:', result.data?.length || 0, 'Total with leader:', totalMembers);
+      } else {
+        console.error('Failed to load group members:', result.error);
+        // If we can't load members, show at least 1 (the leader)
+        setMemberCount(1);
+      }
+    } catch (error) {
+      console.error('Error loading group members:', error);
+      // If we can't load members, show at least 1 (the leader)
+      setMemberCount(1);
+    }
+  };
 
   const loadGroupPosts = async () => {
     try {
@@ -43,7 +89,8 @@ const GroupDetailsScreen = ({ navigation, route }) => {
         author: {
           id: post.author_id,
           name: post.author_name,
-          role: post.author_role
+          role: post.author_role,
+          profile_picture_url: post.author_profile_picture_url
         },
         content: post.content,
         timestamp: formatTimestamp(post.created_at),
@@ -76,6 +123,7 @@ const GroupDetailsScreen = ({ navigation, route }) => {
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     loadGroupPosts();
+    loadGroupMembers();
     setTimeout(() => setRefreshing(false), 1000);
   }, []);
 
@@ -155,12 +203,47 @@ const GroupDetailsScreen = ({ navigation, route }) => {
           ]
         );
       } else {
-        Alert.alert('Error', result.error || 'Failed to create invite link');
+        Alert.alert('Error', 'Failed to create invite link');
       }
     } catch (error) {
       console.error('Error creating invite:', error);
       Alert.alert('Error', 'Failed to create invite link');
     }
+  };
+
+  const renderMemberAvatars = () => {
+    const maxAvatars = 3;
+    
+    // Create array with leader first, then members
+    const allMembers = [
+      { 
+        name: user.name, 
+        profile_picture_url: user.profile_picture_url,
+        isLeader: true 
+      }, // Current user as leader
+      ...(members || []).map(member => ({ 
+        name: member.profiles?.name || 'Unknown',
+        profile_picture_url: member.profiles?.profile_picture_url,
+        isLeader: false 
+      }))
+    ];
+    
+    const displayMembers = allMembers.slice(0, maxAvatars);
+    
+    return displayMembers.map((member, index) => (
+      <Avatar
+        key={index}
+        imageUrl={member.profile_picture_url}
+        name={member.name}
+        size={32}
+        showBorder={true}
+        borderColor="#fff"
+        borderWidth={2}
+        style={{
+          marginLeft: index > 0 ? -8 : 0
+        }}
+      />
+    ));
   };
 
   const tabs = ['Feed', 'Photos', 'About', 'Members'];
@@ -192,11 +275,11 @@ const GroupDetailsScreen = ({ navigation, route }) => {
       )}
       
       <View style={styles.postHeader}>
-        <View style={styles.postUserAvatar}>
-          <Text style={styles.postAvatarText}>
-            {post.author.name?.charAt(0).toUpperCase() || 'U'}
-          </Text>
-        </View>
+        <Avatar
+          imageUrl={post.author.profile_picture_url}
+          name={post.author.name}
+          size={40}
+        />
         <View style={styles.postUserInfo}>
           <Text style={styles.postUserName}>{post.author.name}</Text>
           <Text style={styles.postTimestamp}>{post.timestamp}</Text>
@@ -269,56 +352,72 @@ const GroupDetailsScreen = ({ navigation, route }) => {
 
   return (
     <View style={styles.container}>
-      {/* Header with gradient background */}
-      <LinearGradient
-        colors={['#667eea', '#764ba2']}
-        style={styles.header}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View style={styles.headerTop}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.searchButton}>
-            <Ionicons name="search" size={20} color="#fff" />
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.menuButton}>
-            <Ionicons name="ellipsis-vertical" size={20} color="#fff" />
-          </TouchableOpacity>
-        </View>
+      {/* Header with cover photo or gradient background */}
+      <View style={styles.headerContainer}>
+        {group.cover_photo_url ? (
+          <>
+            <Image 
+              source={{ uri: group.cover_photo_url }} 
+              style={styles.headerImage}
+              resizeMode="cover"
+              onError={(error) => {
+                console.log('Cover photo failed to load:', error);
+              }}
+            />
+            <View style={styles.headerOverlay} />
+          </>
+        ) : (
+          <LinearGradient
+            colors={['#667eea', '#764ba2']}
+            style={styles.headerGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          />
+        )}
         
-        <View style={styles.groupInfo}>
-          <View style={styles.groupStats}>
-            <View style={styles.memberAvatars}>
-              {/* Mock member avatars */}
-              <View style={[styles.memberAvatar, { backgroundColor: '#FF6B6B' }]}>
-                <Text style={styles.memberAvatarText}>S</Text>
-              </View>
-              <View style={[styles.memberAvatar, { backgroundColor: '#4ECDC4', marginLeft: -8 }]}>
-                <Text style={styles.memberAvatarText}>M</Text>
-              </View>
-              <View style={[styles.memberAvatar, { backgroundColor: '#45B7D1', marginLeft: -8 }]}>
-                <Text style={styles.memberAvatarText}>J</Text>
-              </View>
-            </View>
-            <View style={styles.statsText}>
-              <Text style={styles.memberCount}>{group.member_count || 12} Members</Text>
-              <Text style={styles.groupType}>Sports Group</Text>
-            </View>
+        {/* Header Content */}
+        <View style={styles.headerContent}>
+          <View style={styles.headerTop}>
+            <TouchableOpacity 
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.searchButton}>
+              <Ionicons name="search" size={20} color="#fff" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.menuButton}
+              onPress={() => setOptionsModalVisible(true)}
+            >
+              <Ionicons name="ellipsis-vertical" size={20} color="#fff" />
+            </TouchableOpacity>
           </View>
           
-          <TouchableOpacity style={styles.inviteButton} onPress={handleInvite}>
-            <Ionicons name="add" size={16} color="#667eea" />
-            <Text style={styles.inviteButtonText}>Invite</Text>
-          </TouchableOpacity>
+          <View style={styles.groupInfo}>
+            <View style={styles.groupStats}>
+              <View style={styles.memberAvatars}>
+                {/* Show actual member avatars */}
+                {renderMemberAvatars()}
+              </View>
+              <View style={styles.statsText}>
+                <Text style={styles.memberCount}>
+                  {memberCount} {memberCount === 1 ? 'Member' : 'Members'}
+                </Text>
+                <Text style={styles.groupType}>{group.sport || 'Sports Group'}</Text>
+              </View>
+            </View>
+            
+            <TouchableOpacity style={styles.inviteButton} onPress={handleInvite}>
+              <Ionicons name="add" size={16} color="#667eea" />
+              <Text style={styles.inviteButtonText}>Invite</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </LinearGradient>
+      </View>
 
       {renderTabBar()}
 
@@ -350,6 +449,15 @@ const GroupDetailsScreen = ({ navigation, route }) => {
         post={selectedPost}
         user={user}
       />
+
+      {/* Group Options Modal */}
+      <GroupOptionsModal
+        visible={optionsModalVisible}
+        onClose={() => setOptionsModalVisible(false)}
+        group={group}
+        user={user}
+        navigation={navigation}
+      />
     </View>
   );
 };
@@ -358,6 +466,47 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
+  },
+  headerContainer: {
+    position: 'relative',
+    height: 200,
+  },
+  headerImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+  },
+  headerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  headerGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+  },
+  headerContent: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    justifyContent: 'space-between',
   },
   header: {
     paddingTop: 60, // More space for status bar and breathing room
@@ -557,20 +706,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
-  },
-  postUserAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#667eea',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  postAvatarText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    gap: 12,
   },
   postUserInfo: {
     flex: 1,

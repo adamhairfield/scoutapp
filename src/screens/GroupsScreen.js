@@ -8,6 +8,7 @@ import {
   Alert,
   RefreshControl,
   Dimensions,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -40,7 +41,15 @@ const GroupsScreen = ({ navigation }) => {
         userGroups = await groupService.getUserGroups(user.id);
       }
 
-      setGroups(userGroups || []);
+      console.log('Loaded groups:', userGroups);
+      // Sort groups: pinned first, then by creation date
+      const sortedGroups = (userGroups || []).sort((a, b) => {
+        if (a.is_pinned && !b.is_pinned) return -1;
+        if (!a.is_pinned && b.is_pinned) return 1;
+        return new Date(b.created_at) - new Date(a.created_at);
+      });
+      
+      setGroups(sortedGroups);
     } catch (error) {
       console.error('Error loading groups:', error);
       Alert.alert('Error', 'Failed to load groups');
@@ -70,6 +79,41 @@ const GroupsScreen = ({ navigation }) => {
     navigation.navigate('GroupDetails', { group });
   };
 
+  const handlePinGroup = async (group, event) => {
+    // Prevent the group press event from firing
+    event.stopPropagation();
+    
+    try {
+      const newPinnedState = !group.is_pinned;
+      
+      // Update the group in the database
+      const result = await groupService.updateGroupPin(group.id, user.id, newPinnedState);
+      
+      if (result.success) {
+        // Update local state
+        setGroups(prevGroups => {
+          const updatedGroups = prevGroups.map(g => 
+            g.id === group.id ? { ...g, is_pinned: newPinnedState } : g
+          );
+          
+          // Sort groups: pinned first, then by creation date
+          return updatedGroups.sort((a, b) => {
+            if (a.is_pinned && !b.is_pinned) return -1;
+            if (!a.is_pinned && b.is_pinned) return 1;
+            return new Date(b.created_at) - new Date(a.created_at);
+          });
+        });
+        
+        console.log(`Group ${group.name} ${newPinnedState ? 'pinned' : 'unpinned'}`);
+      } else {
+        Alert.alert('Error', 'Failed to update group pin status');
+      }
+    } catch (error) {
+      console.error('Error pinning group:', error);
+      Alert.alert('Error', 'Failed to update group pin status');
+    }
+  };
+
   const getGroupGradient = (sport, index) => {
     const gradients = [
       ['#667eea', '#764ba2'], // Purple
@@ -84,60 +128,98 @@ const GroupsScreen = ({ navigation }) => {
     return gradients[index % gradients.length];
   };
 
-  const getSportIcon = (sport) => {
-    const icons = {
-      'Soccer': 'football',
-      'Basketball': 'basketball',
-      'Baseball': 'baseball',
-      'Football': 'american-football',
-      'Tennis': 'tennisball',
-      'Swimming': 'water',
-      'Volleyball': 'basketball', // closest available
-      'Hockey': 'ice-cream', // closest available
-    };
-    return icons[sport] || 'trophy';
-  };
 
-  const renderGroupCard = ({ item: group, index }) => (
-    <TouchableOpacity
-      style={styles.groupCard}
-      onPress={() => handleGroupPress(group)}
-    >
-      <LinearGradient
-        colors={getGroupGradient(group.sport, index)}
-        style={styles.groupGradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+  const renderGroupCard = ({ item: group, index }) => {
+    console.log('Rendering group:', group.name, 'Cover photo URL:', group.cover_photo_url);
+    
+    return (
+      <TouchableOpacity
+        style={styles.groupCard}
+        onPress={() => handleGroupPress(group)}
       >
-        {/* Sport Icon */}
-        <View style={styles.sportIconContainer}>
-          <Ionicons 
-            name={getSportIcon(group.sport)} 
-            size={40} 
-            color="rgba(255, 255, 255, 0.3)" 
+        {group.cover_photo_url ? (
+        // Show cover photo if available
+        <View style={styles.groupImageContainer}>
+          <Image 
+            source={{ uri: group.cover_photo_url }} 
+            style={styles.groupImage}
+            resizeMode="cover"
           />
+          {/* Overlay for better text readability */}
+          <View style={styles.imageOverlay} />
+          
+          {/* Heart Pin Button */}
+          <TouchableOpacity 
+            style={styles.heartButton}
+            onPress={(event) => handlePinGroup(group, event)}
+          >
+            <Ionicons 
+              name={group.is_pinned ? "heart" : "heart-outline"} 
+              size={20} 
+              color={group.is_pinned ? "#FF3B30" : "rgba(255, 255, 255, 0.8)"} 
+            />
+          </TouchableOpacity>
+          
+          {/* Menu Button */}
+          <TouchableOpacity 
+            style={styles.menuButton}
+            onPress={() => handleViewRequests(group)}
+          >
+            <Ionicons name="ellipsis-horizontal" size={20} color="#fff" />
+          </TouchableOpacity>
+          
+          {/* Group Info */}
+          <View style={styles.groupInfo}>
+            <Text style={styles.groupName} numberOfLines={2}>
+              {group.name}
+            </Text>
+            <Text style={styles.groupSport}>
+              {group.sport}
+            </Text>
+          </View>
         </View>
-        
-        {/* Menu Button */}
-        <TouchableOpacity 
-          style={styles.menuButton}
-          onPress={() => handleViewRequests(group)}
+      ) : (
+        // Fallback to gradient if no cover photo
+        <LinearGradient
+          colors={getGroupGradient(group.sport, index)}
+          style={styles.groupGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
         >
-          <Ionicons name="ellipsis-horizontal" size={20} color="#fff" />
-        </TouchableOpacity>
-        
-        {/* Group Info */}
-        <View style={styles.groupInfo}>
-          <Text style={styles.groupName} numberOfLines={2}>
-            {group.name}
-          </Text>
-          <Text style={styles.groupSport}>
-            {group.sport}
-          </Text>
-        </View>
-      </LinearGradient>
+          {/* Heart Pin Button */}
+          <TouchableOpacity 
+            style={styles.heartButton}
+            onPress={(event) => handlePinGroup(group, event)}
+          >
+            <Ionicons 
+              name={group.is_pinned ? "heart" : "heart-outline"} 
+              size={20} 
+              color={group.is_pinned ? "#FF3B30" : "rgba(255, 255, 255, 0.8)"} 
+            />
+          </TouchableOpacity>
+          
+          {/* Menu Button */}
+          <TouchableOpacity 
+            style={styles.menuButton}
+            onPress={() => handleViewRequests(group)}
+          >
+            <Ionicons name="ellipsis-horizontal" size={20} color="#fff" />
+          </TouchableOpacity>
+          
+          {/* Group Info */}
+          <View style={styles.groupInfo}>
+            <Text style={styles.groupName} numberOfLines={2}>
+              {group.name}
+            </Text>
+            <Text style={styles.groupSport}>
+              {group.sport}
+            </Text>
+          </View>
+        </LinearGradient>
+      )}
     </TouchableOpacity>
-  );
+    );
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
@@ -322,10 +404,36 @@ const styles = StyleSheet.create({
     padding: 15,
     position: 'relative',
   },
-  sportIconContainer: {
+  groupImageContainer: {
+    flex: 1,
+    position: 'relative',
+  },
+  groupImage: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+  },
+  imageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  heartButton: {
     position: 'absolute',
     top: 15,
     left: 15,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
   },
   menuButton: {
     position: 'absolute',

@@ -16,6 +16,48 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Function to refresh user profile data
+  const refreshUserProfile = async () => {
+    if (!user?.id) {
+      console.log('No user ID available for refresh');
+      return;
+    }
+    
+    try {
+      console.log('Refreshing user profile for ID:', user.id);
+      
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching updated profile:', error);
+        return;
+      }
+
+      if (profile) {
+        console.log('Updated profile data:', profile);
+        
+        const updatedUser = {
+          ...user,
+          ...profile
+        };
+        
+        console.log('Setting updated user:', updatedUser);
+        setUser(updatedUser);
+        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+        
+        console.log('User profile refreshed successfully');
+      } else {
+        console.log('No profile data returned');
+      }
+    } catch (error) {
+      console.error('Error refreshing user profile:', error);
+    }
+  };
+
   useEffect(() => {
     checkAuthState();
     
@@ -30,11 +72,33 @@ export const AuthProvider = ({ children }) => {
           setUser(null);
         } else if (event === 'SIGNED_IN' && session?.user) {
           // User signed in - get fresh profile data
-          const { data: profile } = await supabase
+          let { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', session.user.id)
             .single();
+          
+          // If profile doesn't exist, try to create it
+          if (profileError || !profile) {
+            try {
+              await supabase.rpc('create_missing_profile', {
+                user_id: session.user.id,
+                user_email: session.user.email,
+                user_name: session.user.email.split('@')[0],
+                user_role: 'player'
+              });
+
+              const { data: newProfile } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .single();
+
+              profile = newProfile;
+            } catch (error) {
+              console.error('Error creating profile on sign in:', error);
+            }
+          }
           
           const userData = {
             id: session.user.id,
@@ -77,12 +141,39 @@ export const AuthProvider = ({ children }) => {
           .eq('id', session.user.id)
           .single();
         
-        if (profileError) {
-          console.error('Error getting profile:', profileError);
-          // Session exists but can't get profile - clear auth state
-          await AsyncStorage.removeItem('user');
-          setUser(null);
-          return;
+        if (profileError || !profile) {
+          console.log('Profile not found during auth check, attempting to create one for user:', session.user.id);
+          
+          try {
+            // Try to create missing profile
+            await supabase.rpc('create_missing_profile', {
+              user_id: session.user.id,
+              user_email: session.user.email,
+              user_name: session.user.email.split('@')[0],
+              user_role: 'player'
+            });
+
+            // Try to fetch the profile again
+            const { data: newProfile, error: newProfileError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+
+            if (newProfileError || !newProfile) {
+              console.error('Could not create/fetch profile during auth check:', newProfileError);
+              await AsyncStorage.removeItem('user');
+              setUser(null);
+              return;
+            }
+
+            profile = newProfile;
+          } catch (error) {
+            console.error('Error creating missing profile during auth check:', error);
+            await AsyncStorage.removeItem('user');
+            setUser(null);
+            return;
+          }
         }
         
         const userData = {
@@ -131,12 +222,50 @@ export const AuthProvider = ({ children }) => {
         .single();
 
       if (profileError || !profile) {
-        // Profile doesn't exist - this shouldn't happen for existing users
-        console.error('Profile not found for user:', data.user.id, profileError);
-        return { 
-          success: false, 
-          error: 'User profile not found. Please contact support or try registering again.' 
-        };
+        // Profile doesn't exist - try to create it for existing users
+        console.log('Profile not found, attempting to create one for user:', data.user.id);
+        
+        try {
+          // Call the create_missing_profile function
+          const { data: createResult, error: createError } = await supabase
+            .rpc('create_missing_profile', {
+              user_id: data.user.id,
+              user_email: data.user.email,
+              user_name: data.user.email.split('@')[0],
+              user_role: 'player'
+            });
+
+          if (createError) {
+            console.error('Failed to create profile:', createError);
+            return { 
+              success: false, 
+              error: 'Could not create user profile. Please try again or contact support.' 
+            };
+          }
+
+          // Try to fetch the profile again
+          const { data: newProfile, error: newProfileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.user.id)
+            .single();
+
+          if (newProfileError || !newProfile) {
+            console.error('Still could not fetch profile after creation:', newProfileError);
+            return { 
+              success: false, 
+              error: 'Profile creation failed. Please contact support.' 
+            };
+          }
+
+          profile = newProfile;
+        } catch (error) {
+          console.error('Error creating missing profile:', error);
+          return { 
+            success: false, 
+            error: 'Could not create user profile. Please try again.' 
+          };
+        }
       }
 
       const userData = {
@@ -237,6 +366,7 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     loading,
+    refreshUserProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

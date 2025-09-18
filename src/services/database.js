@@ -13,6 +13,7 @@ export const groupService = {
           leader_id: groupData.leader_id,
           description: groupData.description,
           season: groupData.season,
+          cover_photo_url: groupData.cover_photo_url || null,
           created_at: new Date().toISOString()
         }])
         .select()
@@ -35,6 +36,10 @@ export const groupService = {
           *,
           group_members (
             id
+          ),
+          group_pins!left (
+            id,
+            user_id
           )
         `)
         .eq('leader_id', userId);
@@ -49,6 +54,10 @@ export const groupService = {
           group_members!inner (
             id,
             player_id
+          ),
+          group_pins!left (
+            id,
+            user_id
           )
         `)
         .eq('group_members.player_id', userId);
@@ -61,11 +70,12 @@ export const groupService = {
         index === self.findIndex(g => g.id === group.id)
       );
 
-      // Add member count to each group
+      // Add member count and pin status to each group
       const groupsWithCount = uniqueGroups.map(group => ({
         ...group,
         member_count: group.group_members?.length || 0,
-        user_role: leaderGroups?.some(lg => lg.id === group.id) ? 'leader' : 'member'
+        user_role: leaderGroups?.some(lg => lg.id === group.id) ? 'leader' : 'member',
+        is_pinned: group.group_pins?.some(pin => pin.user_id === userId) || false
       }));
 
       return groupsWithCount;
@@ -306,6 +316,137 @@ export const groupService = {
     } catch (error) {
       return { success: false, error: error.message };
     }
+  },
+
+  // Update group pin status for a user
+  async updateGroupPin(groupId, userId, isPinned) {
+    try {
+      // First check if a pin record exists
+      const { data: existingPin, error: checkError } = await supabase
+        .from('group_pins')
+        .select('id')
+        .eq('group_id', groupId)
+        .eq('user_id', userId)
+        .single();
+
+      if (isPinned) {
+        if (!existingPin) {
+          // Create new pin record
+          const { error } = await supabase
+            .from('group_pins')
+            .insert([{
+              group_id: groupId,
+              user_id: userId,
+              pinned_at: new Date().toISOString()
+            }]);
+
+          if (error) throw error;
+        }
+      } else {
+        if (existingPin) {
+          // Remove pin record
+          const { error } = await supabase
+            .from('group_pins')
+            .delete()
+            .eq('group_id', groupId)
+            .eq('user_id', userId);
+
+          if (error) throw error;
+        }
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating group pin:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Search for public groups
+  async searchPublicGroups(query) {
+    try {
+      const { data, error } = await supabase
+        .from('public_groups')
+        .select('*')
+        .or(`name.ilike.%${query}%,sport.ilike.%${query}%,description.ilike.%${query}%`)
+        .order('name')
+        .limit(20);
+
+      if (error) throw error;
+
+      return {
+        success: true,
+        data: data || []
+      };
+    } catch (error) {
+      console.error('Error searching public groups:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  },
+
+  // Update group visibility
+  async updateGroupVisibility(groupId, visibility, userId) {
+    try {
+      // Check if user is the group leader
+      const { data: group, error: checkError } = await supabase
+        .from('groups')
+        .select('leader_id')
+        .eq('id', groupId)
+        .single();
+
+      if (checkError) throw checkError;
+
+      if (group.leader_id !== userId) {
+        return {
+          success: false,
+          error: 'Only group leaders can change visibility settings'
+        };
+      }
+
+      // Update visibility
+      const { error } = await supabase
+        .from('groups')
+        .update({ visibility })
+        .eq('id', groupId);
+
+      if (error) throw error;
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating group visibility:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  },
+
+  // Request to join a group
+  async requestToJoinGroup(groupId, userId) {
+    try {
+      const { data, error } = await supabase
+        .from('group_join_requests')
+        .insert([{
+          group_id: groupId,
+          user_id: userId,
+          request_type: 'player',
+          status: 'pending'
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error requesting to join group:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
   }
 };
 
@@ -345,13 +486,15 @@ export const messageService = {
             id,
             name,
             email,
-            role
+            role,
+            profile_picture_url
           ),
           recipient:profiles!messages_recipient_id_fkey (
             id,
             name,
             email,
-            role
+            role,
+            profile_picture_url
           )
         `)
         .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)

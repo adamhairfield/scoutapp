@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { messageService } from '../services/database';
+import Avatar from '../components/Avatar';
 
 const MessagesScreen = ({ navigation }) => {
   const { user } = useAuth();
@@ -38,11 +39,11 @@ const MessagesScreen = ({ navigation }) => {
       const formattedConversations = userConversations.map(conv => ({
         id: conv.id,
         partnerId: conv.id,
-        name: `${conv.partner.name} (${conv.partner.role === 'parent' ? 'Parent' : 'Coach'})`,
+        name: conv.partner.name,
         lastMessage: conv.lastMessage,
         timestamp: new Date(conv.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         unread: conv.unread,
-        avatar: conv.partner.role === 'parent' ? '👨‍👩‍👧‍👦' : '🏃‍♂️',
+        profilePictureUrl: conv.partner.profile_picture_url,
         partner: conv.partner
       }));
       
@@ -130,7 +131,11 @@ const MessagesScreen = ({ navigation }) => {
       }}
     >
       <View style={styles.avatarContainer}>
-        <Text style={styles.avatar}>{item.avatar}</Text>
+        <Avatar
+          imageUrl={item.profilePictureUrl}
+          name={item.name}
+          size={50}
+        />
         {item.unread > 0 && (
           <View style={styles.unreadBadge}>
             <Text style={styles.unreadText}>{item.unread}</Text>
@@ -178,7 +183,14 @@ const MessagesScreen = ({ navigation }) => {
           >
             <Ionicons name="arrow-back" size={24} color="#333" />
           </TouchableOpacity>
-          <Text style={styles.chatTitle}>{selectedConversation.name}</Text>
+          <View style={styles.chatHeaderCenter}>
+            <Avatar
+              imageUrl={selectedConversation.profilePictureUrl}
+              name={selectedConversation.name}
+              size={32}
+            />
+            <Text style={styles.chatTitle}>{selectedConversation.name}</Text>
+          </View>
           <TouchableOpacity style={styles.callButton}>
             <Ionicons name="call" size={24} color="#667eea" />
           </TouchableOpacity>
@@ -284,15 +296,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     marginRight: 15,
   },
-  avatar: {
-    fontSize: 24,
-    width: 50,
-    height: 50,
-    textAlign: 'center',
-    lineHeight: 50,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 25,
-  },
   unreadBadge: {
     position: 'absolute',
     top: -5,
@@ -335,14 +338,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 20,
+    padding: 15,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e9ecef',
   },
+  chatHeaderCenter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+    gap: 10,
+  },
   chatTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: 'bold',
     color: '#333',
   },
   callButton: {

@@ -7,6 +7,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Avatar from './Avatar';
 
 const CreatePostInput = memo(({ user, onCreatePost }) => {
   const [postText, setPostText] = useState('');
@@ -21,11 +22,11 @@ const CreatePostInput = memo(({ user, onCreatePost }) => {
   return (
     <View style={styles.createPostContainer}>
       <View style={styles.createPostHeader}>
-        <View style={styles.userAvatar}>
-          <Text style={styles.avatarText}>
-            {user.name?.charAt(0).toUpperCase() || 'U'}
-          </Text>
-        </View>
+        <Avatar
+          imageUrl={user.profile_picture_url}
+          name={user.name}
+          size={40}
+        />
         <TextInput
           style={styles.postInput}
           placeholder="Say something..."
@@ -86,20 +87,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: 15,
-  },
-  userAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#667eea',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  avatarText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    gap: 12,
   },
   postInput: {
     flex: 1,
