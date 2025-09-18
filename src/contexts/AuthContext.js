@@ -18,22 +18,72 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     checkAuthState();
+    
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.id);
+        
+        if (event === 'SIGNED_OUT' || !session) {
+          // User signed out or session expired
+          await AsyncStorage.removeItem('user');
+          setUser(null);
+        } else if (event === 'SIGNED_IN' && session?.user) {
+          // User signed in - get fresh profile data
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          
+          const userData = {
+            id: session.user.id,
+            email: session.user.email,
+            name: profile?.name || session.user.email.split('@')[0],
+            role: profile?.role || 'player',
+            ...profile
+          };
+          
+          setUser(userData);
+          await AsyncStorage.setItem('user', JSON.stringify(userData));
+        }
+      }
+    );
+
+    // Cleanup subscription on unmount
+    return () => {
+      subscription?.unsubscribe();
+    };
   }, []);
 
   const checkAuthState = async () => {
     try {
-      // Check Supabase session
+      // Check Supabase session first
       const { data: { session }, error } = await supabase.auth.getSession();
       
       if (error) {
         console.error('Error getting session:', error);
-      } else if (session?.user) {
-        // Get user profile data
-        const { data: profile } = await supabase
+        // Clear any cached data if session check fails
+        await AsyncStorage.removeItem('user');
+        setUser(null);
+        return;
+      }
+      
+      if (session?.user) {
+        // Valid session exists - get fresh profile data
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
           .single();
+        
+        if (profileError) {
+          console.error('Error getting profile:', profileError);
+          // Session exists but can't get profile - clear auth state
+          await AsyncStorage.removeItem('user');
+          setUser(null);
+          return;
+        }
         
         const userData = {
           id: session.user.id,
@@ -46,14 +96,16 @@ export const AuthProvider = ({ children }) => {
         setUser(userData);
         await AsyncStorage.setItem('user', JSON.stringify(userData));
       } else {
-        // Check local storage as fallback
-        const userData = await AsyncStorage.getItem('user');
-        if (userData) {
-          setUser(JSON.parse(userData));
-        }
+        // No valid session - clear any cached data
+        console.log('No valid session found, clearing cached data');
+        await AsyncStorage.removeItem('user');
+        setUser(null);
       }
     } catch (error) {
       console.error('Error checking auth state:', error);
+      // On any error, clear auth state to be safe
+      await AsyncStorage.removeItem('user');
+      setUser(null);
     } finally {
       setLoading(false);
     }
