@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { feedService } from '../services/database';
+import Avatar from './Avatar';
 
 const CommentsModal = ({ visible, onClose, post, user }) => {
   const [comments, setComments] = useState([]);
@@ -76,11 +77,12 @@ const CommentsModal = ({ visible, onClose, post, user }) => {
 
   const renderComment = ({ item: comment }) => (
     <View style={styles.commentItem}>
-      <View style={styles.commentAvatar}>
-        <Text style={styles.commentAvatarText}>
-          {comment.profiles?.name?.charAt(0).toUpperCase() || 'U'}
-        </Text>
-      </View>
+      <Avatar
+        uri={comment.profiles?.profile_picture_url}
+        name={comment.profiles?.name}
+        size={32}
+        style={styles.commentAvatar}
+      />
       <View style={styles.commentContent}>
         <View style={styles.commentBubble}>
           <Text style={styles.commentAuthor}>{comment.profiles?.name}</Text>
@@ -93,13 +95,14 @@ const CommentsModal = ({ visible, onClose, post, user }) => {
 
   const renderHeader = () => (
     <View style={styles.postHeader}>
-      <View style={styles.postAuthorAvatar}>
-        <Text style={styles.postAuthorAvatarText}>
-          {post?.author?.name?.charAt(0).toUpperCase() || 'U'}
-        </Text>
-      </View>
+      <Avatar
+        imageUrl={post?.author_profile_picture_url}
+        name={post?.author_name}
+        size={40}
+        style={styles.postAuthorAvatar}
+      />
       <View style={styles.postAuthorInfo}>
-        <Text style={styles.postAuthorName}>{post?.author?.name}</Text>
+        <Text style={styles.postAuthorName}>{post?.author_name}</Text>
         <Text style={styles.postTime}>{post?.timestamp}</Text>
       </View>
     </View>
@@ -152,11 +155,12 @@ const CommentsModal = ({ visible, onClose, post, user }) => {
 
           {/* Comment Input */}
           <View style={styles.inputContainer}>
-            <View style={styles.userAvatar}>
-              <Text style={styles.userAvatarText}>
-                {user?.name?.charAt(0).toUpperCase() || 'U'}
-              </Text>
-            </View>
+            <Avatar
+              imageUrl={user?.profile_picture_url}
+              name={user?.name}
+              size={32}
+              style={styles.userAvatar}
+            />
             <TextInput
               style={styles.commentInput}
               placeholder="Add a comment..."
@@ -223,18 +227,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   postAuthorAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#667eea',
-    justifyContent: 'center',
-    alignItems: 'center',
     marginRight: 12,
-  },
-  postAuthorAvatarText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
   postAuthorInfo: {
     flex: 1,
@@ -267,18 +260,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   commentAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#667eea',
-    justifyContent: 'center',
-    alignItems: 'center',
     marginRight: 12,
-  },
-  commentAvatarText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
   },
   commentContent: {
     flex: 1,
@@ -332,18 +314,7 @@ const styles = StyleSheet.create({
     borderTopColor: '#e9ecef',
   },
   userAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#667eea',
-    justifyContent: 'center',
-    alignItems: 'center',
     marginRight: 12,
-  },
-  userAvatarText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
   },
   commentInput: {
     flex: 1,

@@ -82,22 +82,46 @@ const JoinGroupScreen = ({ navigation }) => {
         playerId = selectedPlayer.id;
       }
 
-      const result = await groupService.createJoinRequest(
-        foundGroup.id,
-        user.id,
-        requestType,
-        playerId,
-        message.trim()
-      );
-
-      if (result.success) {
-        Alert.alert(
-          'Request Sent!',
-          'Your join request has been sent to the group leader. You will be notified when it is reviewed.',
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
-        );
+      // For simple group joining (no parent/player complexity), use the new joinGroup method
+      if (requestType === 'player' && !playerId) {
+        const result = await groupService.joinGroup(foundGroup.id, user.id);
+        
+        if (result.success) {
+          if (result.joined) {
+            Alert.alert(
+              'Joined Successfully!',
+              result.message || `You've joined ${foundGroup.name}!`,
+              [{ text: 'OK', onPress: () => navigation.goBack() }]
+            );
+          } else {
+            Alert.alert(
+              'Request Sent!',
+              'Your join request has been sent to the group leader. You will be notified when it is reviewed.',
+              [{ text: 'OK', onPress: () => navigation.goBack() }]
+            );
+          }
+        } else {
+          Alert.alert('Error', result.error || 'Failed to join group');
+        }
       } else {
-        Alert.alert('Error', result.error || 'Failed to send join request');
+        // For complex cases (parent joining for child), use the original method
+        const result = await groupService.createJoinRequest(
+          foundGroup.id,
+          user.id,
+          requestType,
+          playerId,
+          message.trim()
+        );
+
+        if (result.success) {
+          Alert.alert(
+            'Request Sent!',
+            'Your join request has been sent to the group leader. You will be notified when it is reviewed.',
+            [{ text: 'OK', onPress: () => navigation.goBack() }]
+          );
+        } else {
+          Alert.alert('Error', result.error || 'Failed to send join request');
+        }
       }
     } catch (error) {
       console.error('Error submitting join request:', error);

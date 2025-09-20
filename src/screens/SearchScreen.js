@@ -140,23 +140,35 @@ const SearchScreen = ({ navigation }) => {
 
   const handleJoinGroup = async (group) => {
     try {
-      const result = await groupService.requestToJoinGroup(group.id, user.id);
+      const result = await groupService.joinGroup(group.id, user.id);
       if (result.success) {
-        Alert.alert('Success', `Join request sent to ${group.name}!`);
-        // Update the group's status in the search results
-        setSearchResults(prev => 
-          prev.map(g => 
-            g.id === group.id 
-              ? { ...g, membershipStatus: 'request_sent' }
-              : g
-          )
-        );
+        if (result.joined) {
+          // User was immediately added to the group (public group)
+          Alert.alert('Success', result.message || `You've joined ${group.name}!`);
+          setSearchResults(prev => 
+            prev.map(g => 
+              g.id === group.id 
+                ? { ...g, membershipStatus: 'member' }
+                : g
+            )
+          );
+        } else {
+          // Join request was created (private group)
+          Alert.alert('Success', `Join request sent to ${group.name}!`);
+          setSearchResults(prev => 
+            prev.map(g => 
+              g.id === group.id 
+                ? { ...g, membershipStatus: 'request_sent' }
+                : g
+            )
+          );
+        }
       } else {
-        Alert.alert('Error', result.error || 'Failed to send join request');
+        Alert.alert('Error', result.error || 'Failed to join group');
       }
     } catch (error) {
       console.error('Error joining group:', error);
-      Alert.alert('Error', 'Failed to send join request');
+      Alert.alert('Error', 'Failed to join group');
     }
   };
 

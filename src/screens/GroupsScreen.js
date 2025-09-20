@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { groupService } from '../services/database';
+import AppHeader from '../components/AppHeader';
 
 const { width } = Dimensions.get('window');
 const cardWidth = (width - 60) / 2; // 2 cards per row with margins
@@ -263,23 +264,14 @@ const GroupsScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.headerTitle}>My Groups</Text>
-        </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.searchButton}>
-            <Ionicons name="search" size={24} color="#333" />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.createButton} 
-            onPress={handleCreateGroup}
-          >
-            <Ionicons name="add" size={20} color="#667eea" />
-            <Ionicons name="people" size={20} color="#667eea" />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <AppHeader 
+        navigation={navigation}
+        title="Scout"
+        rightIcon="menu"
+        onRightPress={() => navigation.navigate('Settings')}
+        backgroundColor="#fff"
+        textColor="#000"
+      />
 
       {/* Action Buttons */}
       <View style={styles.actionButtons}>
@@ -323,33 +315,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f8f9fa',
   },
-  header: {
-    paddingTop: 50,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-    backgroundColor: '#fff',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  headerLeft: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 15,
-  },
-  searchButton: {
-    padding: 5,
-  },
   createButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -357,7 +322,7 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     paddingHorizontal: 20,
-    paddingTop: 15,
+    paddingTop: 120,
     gap: 12,
   },
   actionButton: {

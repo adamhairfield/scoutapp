@@ -447,6 +447,50 @@ export const groupService = {
         error: error.message
       };
     }
+  },
+
+  // Join a group (handles both public and private groups)
+  async joinGroup(groupId, userId) {
+    try {
+      // First, get the group to check its visibility
+      const { data: group, error: groupError } = await supabase
+        .from('groups')
+        .select('visibility')
+        .eq('id', groupId)
+        .single();
+
+      if (groupError) throw groupError;
+
+      // If group is public, add user directly to group_members
+      if (group.visibility === 'public') {
+        const { data, error } = await supabase
+          .from('group_members')
+          .insert([{
+            group_id: groupId,
+            player_id: userId,
+            joined_at: new Date().toISOString()
+          }])
+          .select()
+          .single();
+
+        if (error) throw error;
+        return { 
+          success: true, 
+          data, 
+          joined: true,
+          message: 'Successfully joined the group!' 
+        };
+      } else {
+        // If group is private, create a join request
+        return await this.requestToJoinGroup(groupId, userId);
+      }
+    } catch (error) {
+      console.error('Error joining group:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
   }
 };
 
@@ -913,7 +957,8 @@ export const feedService = {
               profiles!post_comments_author_id_fkey (
                 id,
                 name,
-                role
+                role,
+                profile_picture_url
               )
             `)
             .eq('post_id', post.id)
@@ -1008,7 +1053,8 @@ export const feedService = {
           profiles!post_comments_author_id_fkey (
             id,
             name,
-            role
+            role,
+            profile_picture_url
           )
         `)
         .eq('post_id', postId)

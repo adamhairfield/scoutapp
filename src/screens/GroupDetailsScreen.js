@@ -323,11 +323,12 @@ const GroupDetailsScreen = ({ navigation, route }) => {
         <View style={styles.commentsSection}>
           {post.comments.slice(0, 3).map((comment) => (
             <View key={comment.id} style={styles.comment}>
-              <View style={styles.commentAvatar}>
-                <Text style={styles.commentAvatarText}>
-                  {comment.profiles?.name?.charAt(0).toUpperCase() || 'U'}
-                </Text>
-              </View>
+              <Avatar
+                imageUrl={comment.profiles?.profile_picture_url}
+                name={comment.profiles?.name}
+                size={24}
+                style={styles.commentAvatar}
+              />
               <View style={styles.commentBubble}>
                 <Text style={styles.commentAuthor}>{comment.profiles?.name}</Text>
                 <Text style={styles.commentContent}>{comment.content}</Text>
@@ -761,18 +762,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   commentAvatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#667eea',
-    justifyContent: 'center',
-    alignItems: 'center',
     marginRight: 8,
-  },
-  commentAvatarText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
   },
   commentBubble: {
     flex: 1,
