@@ -127,14 +127,23 @@ const GroupDetailsScreen = ({ navigation, route }) => {
     setTimeout(() => setRefreshing(false), 1000);
   }, []);
 
-  const handleCreatePost = useCallback(async (content) => {
+  const handleCreatePost = useCallback(async (postData) => {
     try {
-      const result = await feedService.createPost({
-        group_id: group.id,
-        author_id: user.id,
-        content: content,
-        post_type: 'text'
-      });
+      // Handle both string content (legacy) and object postData (new photo support)
+      const finalPostData = typeof postData === 'string' 
+        ? {
+            group_id: group.id,
+            author_id: user.id,
+            content: postData,
+            post_type: 'text'
+          }
+        : {
+            group_id: group.id,
+            author_id: user.id,
+            ...postData
+          };
+
+      const result = await feedService.createPost(finalPostData);
 
       if (result.success) {
         loadGroupPosts(); // Reload posts to show the new one

@@ -18,8 +18,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { groupService } from '../services/database';
 import { imageUploadService } from '../services/imageUpload';
 
-const CreateGroupScreen = ({ navigation }) => {
+const CreateGroupScreen = ({ navigation, route }) => {
   const { user } = useAuth();
+  const groupType = route?.params?.groupType || 'group'; // Default to 'group' if not specified
   const [groupName, setGroupName] = useState('');
   const [sport, setSport] = useState('');
   const [description, setDescription] = useState('');
@@ -63,7 +64,7 @@ const CreateGroupScreen = ({ navigation }) => {
 
   const handleCreateGroup = async () => {
     if (!groupName.trim()) {
-      Alert.alert('Error', 'Please enter a group title');
+      Alert.alert('Error', `Please enter a ${groupType === 'team' ? 'team' : 'group'} title`);
       return;
     }
 
@@ -104,6 +105,7 @@ const CreateGroupScreen = ({ navigation }) => {
         description: description,
         season: new Date().getFullYear().toString(),
         cover_photo_url: coverPhotoUrl,
+        group_type: groupType, // 'group' or 'team'
       };
 
       const result = await groupService.createGroup(groupData);
@@ -111,7 +113,7 @@ const CreateGroupScreen = ({ navigation }) => {
       if (result.success) {
         Alert.alert(
           'Success!', 
-          `Group "${groupName}" has been created successfully!${coverPhotoUrl ? ' Your cover photo has been uploaded.' : ''}`,
+          `${groupType === 'team' ? 'Team' : 'Group'} "${groupName}" has been created successfully!${coverPhotoUrl ? ' Your cover photo has been uploaded.' : ''}`,
           [
             {
               text: 'OK',
@@ -157,7 +159,7 @@ const CreateGroupScreen = ({ navigation }) => {
           >
             <Text style={styles.cancelText}>Cancel</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Create Group</Text>
+          <Text style={styles.title}>Create {groupType === 'team' ? 'Team' : 'Group'}</Text>
           <View style={styles.headerSpacer} />
         </View>
 

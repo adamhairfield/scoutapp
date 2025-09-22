@@ -994,6 +994,8 @@ export const feedService = {
           link_url: postData.link_url,
           link_title: postData.link_title,
           link_description: postData.link_description,
+          photo_url: postData.photo_url, // Single photo support
+          photo_urls: postData.photo_urls, // Multiple photos support
           is_pinned: postData.is_pinned || false
         }])
         .select()
@@ -1003,6 +1005,22 @@ export const feedService = {
       return { success: true, data };
     } catch (error) {
       console.error('Error creating post:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Create a photo post with single or multiple photos
+  async createPhotoPost(postData) {
+    try {
+      const photoPostData = {
+        ...postData,
+        post_type: 'photo',
+        content: postData.content || '', // Allow empty content for photo-only posts
+      };
+
+      return await this.createPost(photoPostData);
+    } catch (error) {
+      console.error('Error creating photo post:', error);
       return { success: false, error: error.message };
     }
   },

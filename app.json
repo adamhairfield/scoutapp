@@ -64,7 +64,7 @@
       "favicon": "./assets/favicon.png"
     },
     "description": "Connect. Compete. Conquer. - The ultimate sports team management app for coaches, parents, and players.",
-    "privacy": "public",
+    "privacy": "https://teamscout.co/privacy-policy",
     "category": "Sports",
     "keywords": ["sports", "team management", "coaching", "athletics"],
     "extra": {

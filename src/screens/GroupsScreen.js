@@ -66,7 +66,11 @@ const GroupsScreen = ({ navigation }) => {
   };
 
   const handleCreateGroup = () => {
-    navigation.navigate('CreateGroup');
+    navigation.navigate('CreateGroup', { groupType: 'group' });
+  };
+
+  const handleCreateTeam = () => {
+    navigation.navigate('CreateGroup', { groupType: 'team' });
   };
 
   const handleViewRequests = (group) => {
@@ -226,38 +230,44 @@ const GroupsScreen = ({ navigation }) => {
     <View style={styles.emptyState}>
       <Ionicons name="people-outline" size={80} color="#ccc" />
       <Text style={styles.emptyTitle}>
-        {user.role === 'coach' ? 'No Groups Created' : 'No Groups Joined'}
+        No Groups Joined
       </Text>
       <Text style={styles.emptySubtitle}>
-        {user.role === 'coach'
-          ? 'Create your first group to get started'
-          : 'Join a group to see it here'}
+        Join a group to see it here
       </Text>
-      {user.role === 'coach' ? (
-        <TouchableOpacity style={styles.createButton} onPress={handleCreateGroup}>
-          <LinearGradient
-            colors={['#667eea', '#764ba2']}
-            style={styles.createButtonGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          >
-            <Ionicons name="add" size={20} color="#fff" />
-            <Text style={styles.createButtonText}>Create Group</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      ) : (
-        <TouchableOpacity style={styles.createButton} onPress={() => navigation.navigate('JoinGroup')}>
-          <LinearGradient
-            colors={['#667eea', '#764ba2']}
-            style={styles.createButtonGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          >
-            <Ionicons name="add" size={20} color="#fff" />
-            <Text style={styles.createButtonText}>Join Group</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity style={styles.createButton} onPress={() => navigation.navigate('JoinGroup')}>
+        <LinearGradient
+          colors={['#667eea', '#764ba2']}
+          style={styles.createButtonGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        >
+          <Ionicons name="add" size={20} color="#fff" />
+          <Text style={styles.createButtonText}>Join Group</Text>
+        </LinearGradient>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.createButton} onPress={handleCreateGroup}>
+        <LinearGradient
+          colors={['#667eea', '#764ba2']}
+          style={styles.createButtonGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        >
+          <Ionicons name="add" size={20} color="#fff" />
+          <Text style={styles.createButtonText}>Create Group</Text>
+        </LinearGradient>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.createButton} onPress={handleCreateTeam}>
+        <LinearGradient
+          colors={['#667eea', '#764ba2']}
+          style={styles.createButtonGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        >
+          <Ionicons name="trophy" size={20} color="#fff" />
+          <Text style={styles.createButtonText}>Create Team</Text>
+        </LinearGradient>
+      </TouchableOpacity>
     </View>
   );
 
@@ -275,13 +285,17 @@ const GroupsScreen = ({ navigation }) => {
 
       {/* Action Buttons */}
       <View style={styles.actionButtons}>
-        {user.role === 'coach' && (
-          <TouchableOpacity style={styles.actionButton} onPress={handleCreateGroup}>
-            <Ionicons name="add-circle" size={20} color="#667eea" />
-            <Text style={styles.actionButtonText}>Create Group</Text>
-            <Ionicons name="chevron-forward" size={16} color="#666" />
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity style={styles.actionButton} onPress={handleCreateGroup}>
+          <Ionicons name="add-circle" size={20} color="#667eea" />
+          <Text style={styles.actionButtonText}>Create Group</Text>
+          <Ionicons name="chevron-forward" size={16} color="#666" />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionButton} onPress={handleCreateTeam}>
+          <Ionicons name="trophy" size={20} color="#667eea" />
+          <Text style={styles.actionButtonText}>Create Team</Text>
+          <Ionicons name="chevron-forward" size={16} color="#666" />
+        </TouchableOpacity>
         
         <TouchableOpacity 
           style={styles.actionButton} 
