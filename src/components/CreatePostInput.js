@@ -49,7 +49,7 @@ const CreatePostInput = memo(({ user, onCreatePost, groupId }) => {
       // Create post data
       const postData = {
         content: postText.trim(),
-        post_type: selectedPhotos.length > 0 ? 'photo' : 'text',
+        post_type: selectedPhotos.length > 0 ? 'image' : 'text',
         photo_urls: photoUrls.length > 1 ? photoUrls : null,
         photo_url: photoUrls.length === 1 ? photoUrls[0] : null,
       };

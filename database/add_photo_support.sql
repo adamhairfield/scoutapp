@@ -1,8 +1,8 @@
--- Add photo support to posts table
+-- Add photo support to group_posts table
 -- This script adds columns to support photo attachments in group posts
 
--- Add photo_url column to posts table
-ALTER TABLE posts 
+-- Add photo_url column to group_posts table
+ALTER TABLE group_posts 
 ADD COLUMN photo_url TEXT,
 ADD COLUMN photo_urls TEXT[]; -- For multiple photos
 
@@ -58,11 +58,11 @@ FOR DELETE USING (
   AND owner = auth.uid()
 );
 
--- Update posts table to include photo information in queries
+-- Update group_posts table to include photo information in queries
 -- Add index for better performance when querying posts with photos
-CREATE INDEX IF NOT EXISTS idx_posts_photo_url ON posts(photo_url) WHERE photo_url IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_posts_photo_urls ON posts USING GIN(photo_urls) WHERE photo_urls IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_group_posts_photo_url ON group_posts(photo_url) WHERE photo_url IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_group_posts_photo_urls ON group_posts USING GIN(photo_urls) WHERE photo_urls IS NOT NULL;
 
 -- Add comments to document the new columns
-COMMENT ON COLUMN posts.photo_url IS 'URL for single photo attachment';
-COMMENT ON COLUMN posts.photo_urls IS 'Array of URLs for multiple photo attachments';
+COMMENT ON COLUMN group_posts.photo_url IS 'URL for single photo attachment';
+COMMENT ON COLUMN group_posts.photo_urls IS 'Array of URLs for multiple photo attachments';

@@ -21,6 +21,8 @@ import { feedService, groupService } from '../services/database';
 import CreatePostInput from '../components/CreatePostInput';
 import CommentsModal from '../components/CommentsModal';
 import GroupOptionsModal from '../components/GroupOptionsModal';
+import PostOptionsModal from '../components/PostOptionsModal';
+import PhotoViewer from '../components/PhotoViewer';
 import Avatar from '../components/Avatar';
 
 const GroupDetailsScreen = ({ navigation, route }) => {
@@ -37,6 +39,11 @@ const GroupDetailsScreen = ({ navigation, route }) => {
   const [memberCount, setMemberCount] = useState(0);
   const [members, setMembers] = useState([]);
   const [optionsModalVisible, setOptionsModalVisible] = useState(false);
+  const [postOptionsModalVisible, setPostOptionsModalVisible] = useState(false);
+  const [selectedPostForOptions, setSelectedPostForOptions] = useState(null);
+  const [photoViewerVisible, setPhotoViewerVisible] = useState(false);
+  const [selectedPhotos, setSelectedPhotos] = useState([]);
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
 
   useEffect(() => {
     console.log('Group object:', group);
@@ -82,27 +89,7 @@ const GroupDetailsScreen = ({ navigation, route }) => {
   const loadGroupPosts = async () => {
     try {
       const groupPosts = await feedService.getGroupPosts(group.id);
-      
-      // Transform the data to match our component structure
-      const transformedPosts = groupPosts.map(post => ({
-        id: post.id,
-        author: {
-          id: post.author_id,
-          name: post.author_name,
-          role: post.author_role,
-          profile_picture_url: post.author_profile_picture_url
-        },
-        content: post.content,
-        timestamp: formatTimestamp(post.created_at),
-        likes: post.like_count,
-        comments: post.recent_comments || [],
-        commentCount: post.comment_count || 0,
-        liked: post.user_liked,
-        type: post.post_type,
-        pinned: post.is_pinned
-      }));
-      
-      setPosts(transformedPosts);
+      setPosts(groupPosts);
     } catch (error) {
       console.error('Error loading group posts:', error);
       Alert.alert('Error', 'Failed to load posts');
@@ -191,6 +178,65 @@ const GroupDetailsScreen = ({ navigation, route }) => {
     setSelectedPost(null);
   };
 
+  const handleOpenPostOptions = (post) => {
+    setSelectedPostForOptions(post);
+    setPostOptionsModalVisible(true);
+  };
+
+  const handleClosePostOptions = () => {
+    setPostOptionsModalVisible(false);
+    setSelectedPostForOptions(null);
+  };
+
+  const handleDeletePost = async (postId) => {
+    try {
+      const result = await feedService.deletePost(postId, user.id);
+      
+      if (result.success) {
+        // Remove the post from local state
+        setPosts(posts.filter(post => post.id !== postId));
+        Alert.alert('Success', 'Post deleted successfully');
+      } else {
+        Alert.alert('Error', result.error || 'Failed to delete post');
+      }
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      Alert.alert('Error', 'Failed to delete post');
+    }
+  };
+
+  const handleEditPost = (post) => {
+    // TODO: Implement edit post functionality
+    Alert.alert('Info', 'Edit post functionality coming soon!');
+  };
+
+  const handleReportPost = async (postId) => {
+    try {
+      const result = await feedService.reportPost(postId, user.id);
+      
+      if (result.success) {
+        Alert.alert('Success', 'Post reported successfully. Thank you for helping keep our community safe.');
+      } else {
+        Alert.alert('Error', result.error || 'Failed to report post');
+      }
+    } catch (error) {
+      console.error('Error reporting post:', error);
+      Alert.alert('Error', 'Failed to report post');
+    }
+  };
+
+  const handleOpenPhotoViewer = (photos, initialIndex = 0) => {
+    setSelectedPhotos(photos);
+    setSelectedPhotoIndex(initialIndex);
+    setPhotoViewerVisible(true);
+  };
+
+  const handleClosePhotoViewer = () => {
+    setPhotoViewerVisible(false);
+    setSelectedPhotos([]);
+    setSelectedPhotoIndex(0);
+  };
+
   const handleInvite = async () => {
     try {
       // Create an invite link
@@ -274,31 +320,75 @@ const GroupDetailsScreen = ({ navigation, route }) => {
   );
 
 
-  const renderPost = ({ item: post }) => (
-    <View style={styles.postContainer}>
-      {post.pinned && (
-        <View style={styles.pinnedBanner}>
-          <Ionicons name="pin" size={16} color="#666" />
-          <Text style={styles.pinnedText}>Pinned Post</Text>
+  const renderPost = ({ item: post }) => {
+    return (
+      <View style={styles.postContainer}>
+        {post.pinned && (
+          <View style={styles.pinnedBanner}>
+            <Ionicons name="pin" size={16} color="#666" />
+            <Text style={styles.pinnedText}>Pinned Post</Text>
+          </View>
+        )}
+        
+        <View style={styles.postHeader}>
+          <Avatar
+            imageUrl={post.author?.profile_picture_url}
+            name={post.author?.name}
+            size={40}
+          />
+          <View style={styles.postUserInfo}>
+            <Text style={styles.postUserName}>{post.author?.name || 'Unknown User'}</Text>
+            <Text style={styles.postTimestamp}>{post.timestamp || 'Unknown time'}</Text>
+          </View>
+          <TouchableOpacity 
+            style={styles.postMenuButton}
+            onPress={() => handleOpenPostOptions(post)}
+          >
+            <Ionicons name="ellipsis-horizontal" size={20} color="#666" />
+          </TouchableOpacity>
+        </View>
+        
+        <Text style={styles.postContent}>{post.content}</Text>
+        
+        {/* Photo Display */}
+        {(post.photo_url || post.photo_urls) && (
+        <View style={styles.postPhotosContainer}>
+          {post.photo_urls && post.photo_urls.length > 0 ? (
+            // Multiple photos
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.postPhotosScroll}
+            >
+              {post.photo_urls.map((photoUrl, index) => (
+                <TouchableOpacity 
+                  key={index} 
+                  style={styles.postPhotoItem}
+                  onPress={() => handleOpenPhotoViewer(post.photo_urls, index)}
+                >
+                  <Image 
+                    source={{ uri: photoUrl }} 
+                    style={styles.postPhoto}
+                    resizeMode="cover"
+                  />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          ) : post.photo_url ? (
+            // Single photo
+            <TouchableOpacity 
+              style={styles.postSinglePhotoContainer}
+              onPress={() => handleOpenPhotoViewer([post.photo_url], 0)}
+            >
+              <Image 
+                source={{ uri: post.photo_url }} 
+                style={styles.postSinglePhoto}
+                resizeMode="cover"
+              />
+            </TouchableOpacity>
+          ) : null}
         </View>
       )}
-      
-      <View style={styles.postHeader}>
-        <Avatar
-          imageUrl={post.author.profile_picture_url}
-          name={post.author.name}
-          size={40}
-        />
-        <View style={styles.postUserInfo}>
-          <Text style={styles.postUserName}>{post.author.name}</Text>
-          <Text style={styles.postTimestamp}>{post.timestamp}</Text>
-        </View>
-        <TouchableOpacity style={styles.postMenuButton}>
-          <Ionicons name="ellipsis-horizontal" size={20} color="#666" />
-        </TouchableOpacity>
-      </View>
-      
-      <Text style={styles.postContent}>{post.content}</Text>
       
       <View style={styles.postActions}>
         <TouchableOpacity 
@@ -358,7 +448,8 @@ const GroupDetailsScreen = ({ navigation, route }) => {
         </View>
       )}
     </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -436,7 +527,7 @@ const GroupDetailsScreen = ({ navigation, route }) => {
           data={posts}
           renderItem={renderPost}
           keyExtractor={(item) => item.id}
-          ListHeaderComponent={() => <CreatePostInput user={user} onCreatePost={handleCreatePost} />}
+          ListHeaderComponent={() => <CreatePostInput user={user} onCreatePost={handleCreatePost} groupId={group.id} />}
           contentContainerStyle={styles.feedContainer}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -467,6 +558,25 @@ const GroupDetailsScreen = ({ navigation, route }) => {
         group={group}
         user={user}
         navigation={navigation}
+      />
+
+      {/* Post Options Modal */}
+      <PostOptionsModal
+        visible={postOptionsModalVisible}
+        onClose={handleClosePostOptions}
+        post={selectedPostForOptions}
+        currentUser={user}
+        onDeletePost={handleDeletePost}
+        onEditPost={handleEditPost}
+        onReportPost={handleReportPost}
+      />
+
+      {/* Photo Viewer */}
+      <PhotoViewer
+        visible={photoViewerVisible}
+        onClose={handleClosePhotoViewer}
+        photos={selectedPhotos}
+        initialIndex={selectedPhotoIndex}
       />
     </View>
   );
@@ -815,6 +925,30 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#666',
     marginTop: 15,
+  },
+  postPhotosContainer: {
+    marginBottom: 15,
+  },
+  postPhotosScroll: {
+    maxHeight: 200,
+  },
+  postPhotoItem: {
+    marginRight: 10,
+  },
+  postPhoto: {
+    width: 150,
+    height: 150,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+  },
+  postSinglePhotoContainer: {
+    width: '100%',
+  },
+  postSinglePhoto: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
   },
 });
 

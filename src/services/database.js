@@ -934,16 +934,40 @@ export const statsService = {
 
 // Feed Service Functions
 export const feedService = {
+  // Helper function to format timestamps
+  formatTimestamp(timestamp) {
+    if (!timestamp) return 'Unknown time';
+    
+    const now = new Date();
+    const postTime = new Date(timestamp);
+    
+    if (isNaN(postTime.getTime())) return 'Invalid date';
+    
+    const diffInMinutes = Math.floor((now - postTime) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes} minutes ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)} hours ago`;
+    return `${Math.floor(diffInMinutes / 1440)} days ago`;
+  },
+
   // Get posts for a group with recent comments
   async getGroupPosts(groupId) {
+    console.log('🚀 getGroupPosts called with groupId:', groupId);
+    
     try {
-      // First get the posts
+      console.log('📡 Querying group_posts_with_stats...');
+      
+      // First get the posts from the updated view
       const { data: posts, error } = await supabase
         .from('group_posts_with_stats')
         .select('*')
         .eq('group_id', groupId)
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false });
+
+      console.log('✅ Query completed. Posts:', posts?.length || 0);
+      console.log('❌ Query error:', error);
 
       if (error) throw error;
 
@@ -965,14 +989,34 @@ export const feedService = {
             .order('created_at', { ascending: false })
             .limit(5);
 
-          return {
-            ...post,
-            recent_comments: recentComments || []
-          };
+          // Keep all the original post data and just add comments
+          post.recent_comments = recentComments || [];
+          return post;
         })
       );
 
-      return postsWithComments;
+      // Transform the data to match our component structure
+      const transformedPosts = postsWithComments.map(post => ({
+        id: post.id,
+        author: {
+          id: post.author_id,
+          name: post.author_name,
+          role: post.author_role,
+          profile_picture_url: post.author_profile_picture_url
+        },
+        content: post.content,
+        timestamp: this.formatTimestamp(post.created_at),
+        likes: post.like_count,
+        comments: post.recent_comments || [],
+        commentCount: post.comment_count,
+        liked: post.user_liked,
+        type: post.post_type,
+        pinned: post.is_pinned,
+        photo_url: post.photo_url,
+        photo_urls: post.photo_urls
+      }));
+      
+      return transformedPosts;
     } catch (error) {
       console.error('Error getting group posts:', error);
       return [];
@@ -982,6 +1026,7 @@ export const feedService = {
   // Create a new post
   async createPost(postData) {
     try {
+
       const { data, error } = await supabase
         .from('group_posts')
         .insert([{
@@ -1009,12 +1054,115 @@ export const feedService = {
     }
   },
 
+  // Delete a post
+  async deletePost(postId, userId) {
+    try {
+      // First verify the user owns the post
+      const { data: post, error: fetchError } = await supabase
+        .from('group_posts')
+        .select('author_id')
+        .eq('id', postId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      if (post.author_id !== userId) {
+        return { success: false, error: 'You can only delete your own posts' };
+      }
+
+      // Delete the post
+      const { error } = await supabase
+        .from('group_posts')
+        .delete()
+        .eq('id', postId);
+
+      if (error) throw error;
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Update a post
+  async updatePost(postId, userId, updateData) {
+    try {
+      // First verify the user owns the post
+      const { data: post, error: fetchError } = await supabase
+        .from('group_posts')
+        .select('author_id')
+        .eq('id', postId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      if (post.author_id !== userId) {
+        return { success: false, error: 'You can only edit your own posts' };
+      }
+
+      // Update the post
+      const { data, error } = await supabase
+        .from('group_posts')
+        .update({
+          content: updateData.content,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', postId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error updating post:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Report a post
+  async reportPost(postId, userId, reason = 'inappropriate_content') {
+    try {
+      // Check if user already reported this post
+      const { data: existingReport } = await supabase
+        .from('post_reports')
+        .select('id')
+        .eq('post_id', postId)
+        .eq('reporter_id', userId)
+        .single();
+
+      if (existingReport) {
+        return { success: false, error: 'You have already reported this post' };
+      }
+
+      // Create the report
+      const { data, error } = await supabase
+        .from('post_reports')
+        .insert([{
+          post_id: postId,
+          reporter_id: userId,
+          reason: reason,
+          created_at: new Date().toISOString()
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error reporting post:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
   // Create a photo post with single or multiple photos
   async createPhotoPost(postData) {
     try {
       const photoPostData = {
         ...postData,
-        post_type: 'photo',
+        post_type: 'image',
         content: postData.content || '', // Allow empty content for photo-only posts
       };
 

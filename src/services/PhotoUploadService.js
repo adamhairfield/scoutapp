@@ -75,7 +75,7 @@ class PhotoUploadService {
   async openCamera(options = {}) {
     try {
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: 'images', // Use string instead of enum
         allowsEditing: true,
         aspect: options.aspect || [4, 3],
         quality: options.quality || 0.8,
@@ -99,7 +99,7 @@ class PhotoUploadService {
   async openImageLibrary(options = {}) {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: 'images', // Use string instead of enum
         allowsEditing: !options.allowsMultipleSelection,
         allowsMultipleSelection: options.allowsMultipleSelection || false,
         selectionLimit: options.selectionLimit || 1,
@@ -133,14 +133,14 @@ class PhotoUploadService {
       const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExtension}`;
       const filePath = `${groupId}/${fileName}`;
 
-      // Convert image to blob
+      // Read file as ArrayBuffer (React Native compatible)
       const response = await fetch(imageAsset.uri);
-      const blob = await response.blob();
+      const arrayBuffer = await response.arrayBuffer();
 
       // Upload to Supabase storage
       const { data, error } = await supabase.storage
         .from(this.bucketName)
-        .upload(filePath, blob, {
+        .upload(filePath, arrayBuffer, {
           contentType: `image/${fileExtension}`,
           metadata: {
             uploadedBy: userId,
