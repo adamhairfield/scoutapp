@@ -6,27 +6,22 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import AntiSpamService from '../services/AntiSpamService';
+// import GoogleSignInService from '../services/GoogleSignInService'; // Disabled for Expo Go
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [selectedRole, setSelectedRole] = useState('coach');
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const { login, register } = useAuth();
-
-  const roles = [
-    { key: 'coach', label: 'Coach', icon: 'megaphone', color: '#FF6B35' },
-    { key: 'parent', label: 'Parent', icon: 'people', color: '#4ECDC4' },
-    { key: 'player', label: 'Player', icon: 'trophy', color: '#45B7D1' },
-  ];
 
   const handleAuth = async () => {
     if (!email || !password) {
@@ -34,54 +29,47 @@ const LoginScreen = ({ navigation }) => {
       return;
     }
 
-    // For sign up, check if role is selected
-    if (!isLogin && !selectedRole) {
-      Alert.alert('Error', 'Please select your role');
-      return;
-    }
-
     setLoading(true);
-    const result = isLogin 
-      ? await login(email, password) // Don't pass role for login
-      : await register(email, password, selectedRole);
-
-    if (!result.success) {
-      Alert.alert('Error', result.error);
+    try {
+      if (isLogin) {
+        // Login - no rate limiting needed for existing users
+        await login(email, password);
+      } else {
+        // Signup - apply rate limiting and validation
+        await AntiSpamService.checkSignupRateLimit();
+        AntiSpamService.validateSignupData(email, password);
+        
+        await register(email, password, 'player'); // Default role since we removed role selector
+        
+        // Record successful signup attempt
+        await AntiSpamService.recordSignupAttempt();
+      }
+    } catch (error) {
+      // Record failed signup attempt for rate limiting
+      if (!isLogin) {
+        await AntiSpamService.recordSignupAttempt();
+      }
+      Alert.alert('Error', error.message);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const RoleSelector = () => (
-    <View style={styles.roleContainer}>
-      <Text style={styles.roleTitle}>I am a...</Text>
-      <View style={styles.roleButtons}>
-        {roles.map((role) => (
-          <TouchableOpacity
-            key={role.key}
-            style={[
-              styles.roleButton,
-              selectedRole === role.key && { backgroundColor: role.color },
-            ]}
-            onPress={() => setSelectedRole(role.key)}
-          >
-            <Ionicons
-              name={role.icon}
-              size={24}
-              color={selectedRole === role.key ? '#fff' : role.color}
-            />
-            <Text
-              style={[
-                styles.roleText,
-                selectedRole === role.key && { color: '#fff' },
-              ]}
-            >
-              {role.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
-  );
+  const handleGoogleSignIn = async () => {
+    Alert.alert('Google Sign-In', 'Available in development build only. Use email/password for now.');
+    // setLoading(true);
+    // try {
+    //   const result = await GoogleSignInService.signIn();
+    //   console.log('Google Sign-In successful:', result);
+    //   // The AuthContext will automatically update when Supabase auth state changes
+    // } catch (error) {
+    //   console.error('Google Sign-In failed:', error);
+    //   Alert.alert('Google Sign-In Failed', error.message || 'An error occurred during Google Sign-In');
+    // } finally {
+    //   setLoading(false);
+    // }
+  };
+
 
   return (
     <KeyboardAvoidingView
@@ -99,7 +87,11 @@ const LoginScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.formContainer}>
-            {!isLogin && <RoleSelector />}
+            {!isLogin && (
+              <View style={styles.signupSection}>
+                <Text style={styles.signupTitle}>Create Your Account</Text>
+              </View>
+            )}
 
             <View style={styles.inputContainer}>
               <Ionicons name="mail" size={20} color="#666" style={styles.inputIcon} />
@@ -132,9 +124,28 @@ const LoginScreen = ({ navigation }) => {
               disabled={loading}
             >
               <Text style={styles.authButtonText}>
-                {loading ? 'Loading...' : isLogin ? 'Sign In' : 'Sign Up'}
+                {loading ? 'Loading...' : (isLogin ? 'Sign In' : 'Create Account')}
               </Text>
             </TouchableOpacity>
+
+            {/* Divider */}
+            <View style={styles.dividerContainer}>
+              <View style={styles.divider} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.divider} />
+            </View>
+
+            {/* Google Sign-In Button - Temporarily disabled for Expo Go */}
+            {/* <TouchableOpacity
+              style={[styles.googleButton, styles.authButtonDisabled]}
+              onPress={handleGoogleSignIn}
+              disabled={false}
+            >
+              <Ionicons name="logo-google" size={20} color="#DB4437" style={styles.googleIcon} />
+              <Text style={styles.googleButtonText}>
+                Continue with Google (Dev Build Only)
+              </Text>
+            </TouchableOpacity> */}
 
             <TouchableOpacity
               style={styles.switchButton}
@@ -182,47 +193,22 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   formContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 20,
     padding: 30,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 10,
+    margin: 20,
+    backdropFilter: 'blur(10px)',
   },
-  roleContainer: {
-    marginBottom: 30,
+  signupSection: {
+    marginBottom: 20,
+    alignItems: 'center',
   },
-  roleTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
+  signupTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
     marginBottom: 15,
     textAlign: 'center',
-  },
-  roleButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  roleButton: {
-    flex: 1,
-    alignItems: 'center',
-    padding: 15,
-    marginHorizontal: 5,
-    borderRadius: 12,
-    backgroundColor: '#f8f9fa',
-    borderWidth: 2,
-    borderColor: '#e9ecef',
-  },
-  roleText: {
-    marginTop: 8,
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
   },
   inputContainer: {
     flexDirection: 'row',
@@ -262,12 +248,49 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   switchText: {
+    color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 16,
-    color: '#666',
   },
   switchTextBold: {
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  dividerText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    paddingHorizontal: 15,
+    fontSize: 14,
+  },
+  googleButton: {
+    backgroundColor: '#fff',
+    paddingVertical: 15,
+    borderRadius: 25,
+    alignItems: 'center',
+    marginBottom: 20,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  googleIcon: {
+    marginRight: 10,
+  },
+  googleButtonText: {
+    color: '#333',
+    fontSize: 16,
     fontWeight: '600',
-    color: '#667eea',
   },
 });
 

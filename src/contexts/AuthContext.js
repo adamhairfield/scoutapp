@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../config/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import AntiSpamService from '../services/AntiSpamService';
 
 const AuthContext = createContext();
 
@@ -286,6 +287,9 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (email, password, role, additionalData = {}) => {
     try {
+      // Flag suspicious accounts for review
+      const shouldFlag = await AntiSpamService.shouldRequestPhoneVerification(email);
+      
       // Register with Supabase
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -294,6 +298,7 @@ export const AuthProvider = ({ children }) => {
           data: {
             role: role || 'player',
             name: additionalData.name || email.split('@')[0],
+            needs_phone_verification: shouldFlag,
             ...additionalData
           }
         }
@@ -340,6 +345,14 @@ export const AuthProvider = ({ children }) => {
         email: data.user.email,
         ...existingProfile
       };
+
+      // Flag suspicious accounts for manual review
+      if (shouldFlag) {
+        await AntiSpamService.flagForReview(
+          data.user.id, 
+          'Free email provider - requires phone verification'
+        );
+      }
 
       await AsyncStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);

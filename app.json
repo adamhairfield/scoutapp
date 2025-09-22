@@ -19,16 +19,45 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.scout.sportsapp",
+      "buildNumber": "1",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Scout uses the camera to take team photos and profile pictures.",
+        "NSPhotoLibraryUsageDescription": "Scout accesses your photo library to select team photos and profile pictures."
       }
     },
+    "notification": {
+      "icon": "./assets/notification-icon.png",
+      "color": "#667eea",
+      "sounds": ["./assets/notification.wav"],
+      "androidMode": "default",
+      "androidCollapsedTitle": "#{unread_notifications} new notifications"
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#ffffff",
+          "sounds": [
+            "./assets/notification-sound.wav"
+          ]
+        }
+      ],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.534069105587-msv0gqdi851dv4b2aimqtnvieqr2djtos"
+        }
+      ]
+    ],
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#667eea"
       },
       "package": "com.scout.sportsapp",
+      "versionCode": 1,
       "edgeToEdgeEnabled": true
     },
     "web": {
@@ -36,6 +65,8 @@
     },
     "description": "Connect. Compete. Conquer. - The ultimate sports team management app for coaches, parents, and players.",
     "privacy": "public",
+    "category": "Sports",
+    "keywords": ["sports", "team management", "coaching", "athletics"],
     "extra": {
       "eas": {
         "projectId": "07bfd362-e614-4988-80c6-351750fc861e"

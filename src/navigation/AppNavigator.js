@@ -5,6 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useAuth } from '../contexts/AuthContext';
+import { useNotifications } from '../contexts/NotificationContext';
 import LoginScreen from '../screens/LoginScreen';
 import CreateGroupScreen from '../screens/CreateGroupScreen';
 import GroupsScreen from '../screens/GroupsScreen';
@@ -21,12 +22,15 @@ import SettingsScreen from '../screens/SettingsScreen';
 import UserSearchScreen from '../screens/UserSearchScreen';
 import FriendRequestsScreen from '../screens/FriendRequestsScreen';
 import SearchScreen from '../screens/SearchScreen';
+import NotificationTestScreen from '../screens/NotificationTestScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
 const MainTabs = () => {
   const { user } = useAuth();
+  const { unreadCount } = useNotifications();
 
   // Add null check for user
   if (!user) {
@@ -45,12 +49,15 @@ const MainTabs = () => {
             iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
           } else if (route.name === 'Search') {
             iconName = focused ? 'search' : 'search-outline';
+          } else if (route.name === 'Notifications') {
+            iconName = focused ? 'notifications' : 'notifications-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
           }
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
+        tabBarBadge: route.name === 'Notifications' && unreadCount > 0 ? unreadCount : undefined,
         tabBarActiveTintColor: '#667eea',
         tabBarInactiveTintColor: 'gray',
         headerShown: false,
@@ -67,6 +74,7 @@ const MainTabs = () => {
       <Tab.Screen name="Groups" component={GroupsScreen} />
       <Tab.Screen name="Messages" component={MessagesScreen} />
       <Tab.Screen name="Search" component={SearchScreen} />
+      <Tab.Screen name="Notifications" component={NotificationsScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
@@ -99,6 +107,7 @@ const AppNavigator = () => {
             <Stack.Screen name="UserSearch" component={UserSearchScreen} />
             <Stack.Screen name="FriendRequests" component={FriendRequestsScreen} />
             <Stack.Screen name="Search" component={SearchScreen} />
+            <Stack.Screen name="NotificationTest" component={NotificationTestScreen} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} />

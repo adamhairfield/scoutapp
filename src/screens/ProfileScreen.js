@@ -389,6 +389,15 @@ const ProfileScreen = ({ navigation }) => {
 
         {/* Settings Section */}
         <View style={styles.settingsSection}>
+          <TouchableOpacity 
+            style={styles.settingItem} 
+            onPress={() => navigation.navigate('NotificationTest')}
+          >
+            <Ionicons name="notifications" size={24} color="#667eea" />
+            <Text style={styles.settingText}>Notification Tester</Text>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
+          
           <TouchableOpacity style={styles.settingItem} onPress={handleLogout}>
             <Ionicons name="log-out" size={24} color="#FF3B30" />
             <Text style={[styles.settingText, { color: '#FF3B30' }]}>Logout</Text>
