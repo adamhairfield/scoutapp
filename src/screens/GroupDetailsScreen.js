@@ -12,6 +12,7 @@ import {
   StatusBar,
   Image,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -244,11 +245,12 @@ const GroupDetailsScreen = ({ navigation, route }) => {
       
       if (result.success) {
         const inviteToken = result.data.invite_token;
-        const inviteUrl = `scoutapp://invite/${inviteToken}`;
-        const shareText = `Join "${group.name}" on Scout App!\n\nTap this link to join: ${inviteUrl}\n\nOr download Scout App and use invite code: ${inviteToken}`;
+        // Create a web-based invite URL that works for everyone
+        const inviteUrl = `https://adamhairfield.github.io/scout-invite/?token=${inviteToken}&group=${encodeURIComponent(group.name)}`;
+        const shareText = `Join "${group.name}" on Scout App!\n\nTap this link to join: ${inviteUrl}\n\nThis link will help you download the app if you don't have it yet!`;
         
         // Copy to clipboard
-        Clipboard.setString(shareText);
+        await Clipboard.setStringAsync(shareText);
         
         Alert.alert(
           'Invite Link Created!',

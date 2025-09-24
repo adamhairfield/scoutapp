@@ -1,9 +1,9 @@
 {
   "expo": {
     "name": "Scout",
-    "slug": "scout-sports-app",
+    "slug": "scout-team-app",
+    "owner": "team-scout",
     "version": "1.0.0",
-    "sdkVersion": "54.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -24,6 +24,9 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Scout uses the camera to take team photos and profile pictures.",
         "NSPhotoLibraryUsageDescription": "Scout accesses your photo library to select team photos and profile pictures."
+      },
+      "config": {
+        "usesNonExemptEncryption": false
       }
     },
     "notification": {
@@ -59,13 +62,12 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "scheme": "scoutapp",
+    "associatedDomains": ["applinks:scout-app.com"],
     "description": "Connect. Compete. Conquer. - The ultimate sports team management app for coaches, parents, and players.",
-    "privacy": "https://teamscout.co/privacy-policy",
-    "category": "Sports",
-    "keywords": ["sports", "team management", "coaching", "athletics"],
     "extra": {
       "eas": {
-        "projectId": "07bfd362-e614-4988-80c6-351750fc861e"
+        "projectId": "71c46caa-79ab-4196-8530-f56a8189e1a3"
       }
     }
   }
