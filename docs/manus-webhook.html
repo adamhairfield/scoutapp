@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manus AI Webhook Receiver</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .webhook-data {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+        }
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        .btn:hover { background: #5a6fd8; }
+        .btn:disabled { background: #6c757d; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 Manus AI Webhook Receiver</h1>
+            <p>This page receives webhook notifications from Manus AI and forwards them to your local Scout backend.</p>
+        </div>
+
+        <div id="status" class="status info">
+            Ready to receive webhook notifications...
+        </div>
+
+        <div id="webhook-data" class="webhook-data" style="display: none;">
+            Waiting for webhook data...
+        </div>
+
+        <div style="text-align: center; margin-top: 20px;">
+            <button id="test-btn" class="btn" onclick="testConnection()">Test Local Connection</button>
+            <button id="clear-btn" class="btn" onclick="clearData()">Clear Data</button>
+        </div>
+
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6;">
+            <h3>Setup Instructions:</h3>
+            <ol>
+                <li>Make sure your Scout backend is running on <code>http://localhost:3001</code></li>
+                <li>Use this URL as your Manus AI webhook: <code id="webhook-url"></code></li>
+                <li>When Manus AI sends notifications, they'll be forwarded to your local backend</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // Set the webhook URL
+        document.getElementById('webhook-url').textContent = window.location.href;
+
+        // Local backend URL
+        const LOCAL_BACKEND = 'http://localhost:3001/api/sportsengine/manus-webhook';
+
+        // Function to update status
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+        }
+
+        // Function to display webhook data
+        function displayWebhookData(data) {
+            const dataEl = document.getElementById('webhook-data');
+            dataEl.style.display = 'block';
+            dataEl.textContent = JSON.stringify(data, null, 2);
+        }
+
+        // Function to forward webhook to local backend
+        async function forwardWebhook(webhookData) {
+            try {
+                updateStatus('Forwarding webhook to local backend...', 'info');
+                
+                const response = await fetch(LOCAL_BACKEND, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(webhookData)
+                });
+
+                if (response.ok) {
+                    updateStatus('✅ Webhook successfully forwarded to local backend!', 'success');
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                console.error('Error forwarding webhook:', error);
+                updateStatus(`❌ Failed to forward webhook: ${error.message}`, 'error');
+            }
+        }
+
+        // Function to test local connection
+        async function testConnection() {
+            const btn = document.getElementById('test-btn');
+            btn.disabled = true;
+            btn.textContent = 'Testing...';
+
+            try {
+                const response = await fetch('http://localhost:3001/health');
+                if (response.ok) {
+                    updateStatus('✅ Local backend is reachable!', 'success');
+                } else {
+                    throw new Error('Backend not responding');
+                }
+            } catch (error) {
+                updateStatus('❌ Cannot reach local backend. Make sure it\'s running on port 3001.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Test Local Connection';
+            }
+        }
+
+        // Function to clear data
+        function clearData() {
+            document.getElementById('webhook-data').style.display = 'none';
+            updateStatus('Ready to receive webhook notifications...', 'info');
+        }
+
+        // Check for webhook data in URL parameters (for GET requests)
+        function checkUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const webhookData = urlParams.get('data');
+            
+            if (webhookData) {
+                try {
+                    const data = JSON.parse(decodeURIComponent(webhookData));
+                    displayWebhookData(data);
+                    forwardWebhook(data);
+                } catch (error) {
+                    updateStatus('❌ Invalid webhook data in URL', 'error');
+                }
+            }
+        }
+
+        // Handle POST requests (if supported by hosting)
+        function handlePostMessage(event) {
+            // This would handle postMessage from iframe or popup
+            if (event.data && event.data.type === 'manus-webhook') {
+                displayWebhookData(event.data.payload);
+                forwardWebhook(event.data.payload);
+            }
+        }
+
+        // Listen for messages
+        window.addEventListener('message', handlePostMessage);
+
+        // Check URL params on load
+        checkUrlParams();
+
+        // Simulate webhook reception for testing
+        window.receiveWebhook = function(data) {
+            displayWebhookData(data);
+            forwardWebhook(data);
+        };
+
+        console.log('Manus AI Webhook Receiver ready!');
+        console.log('Webhook URL:', window.location.href);
+        console.log('To test: receiveWebhook({test: "data"})');
+    </script>
+</body>
+</html>
