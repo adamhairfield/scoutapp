@@ -1049,14 +1049,19 @@ export const feedService = {
         },
         content: post.content,
         timestamp: this.formatTimestamp(post.created_at),
-        likes: post.like_count,
+        likes: post.total_reactions || post.like_count,
         comments: post.recent_comments || [],
         commentCount: post.comment_count,
         liked: post.user_liked,
+        userReaction: post.user_reaction,
         type: post.post_type,
         pinned: post.is_pinned,
         photo_url: post.photo_url,
-        photo_urls: post.photo_urls
+        photo_urls: post.photo_urls,
+        video_url: post.video_url,
+        video_duration: post.video_duration,
+        video_width: post.video_width,
+        video_height: post.video_height
       }));
       
       return transformedPosts;
@@ -1344,6 +1349,71 @@ export const feedService = {
       return { success: true, pinned: !post.is_pinned };
     } catch (error) {
       console.error('Error toggling post pin:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Add or update a reaction to a post
+  async reactToPost(postId, userId, reactionType) {
+    try {
+      // Use upsert to insert or update the reaction
+      const { data, error } = await supabase
+        .from('post_reactions')
+        .upsert([{
+          post_id: postId,
+          user_id: userId,
+          reaction_type: reactionType,
+          updated_at: new Date().toISOString()
+        }], {
+          onConflict: 'post_id,user_id'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error reacting to post:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Remove a reaction from a post
+  async removeReaction(postId, userId) {
+    try {
+      const { error } = await supabase
+        .from('post_reactions')
+        .delete()
+        .eq('post_id', postId)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Error removing reaction:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Get reactions for a post
+  async getPostReactions(postId) {
+    try {
+      const { data, error } = await supabase
+        .from('post_reactions')
+        .select(`
+          *,
+          profiles (
+            name,
+            profile_picture_url
+          )
+        `)
+        .eq('post_id', postId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      console.error('Error getting post reactions:', error);
       return { success: false, error: error.message };
     }
   }

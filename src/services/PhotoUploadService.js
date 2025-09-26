@@ -265,15 +265,134 @@ class PhotoUploadService {
   }
 
   /**
-   * Create storage bucket (for initial setup)
-   * Note: This typically needs to be done via Supabase dashboard
+   * Open video library to select a video
+   */
+  async openVideoLibrary(options = {}) {
+    const hasPermission = await this.requestPermissions();
+    if (!hasPermission) return null;
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        allowsEditing: true,
+        quality: options.quality || 0.8,
+        videoMaxDuration: options.durationLimit || 60,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const video = result.assets[0];
+        return {
+          uri: video.uri,
+          type: video.type,
+          duration: video.duration,
+          width: video.width,
+          height: video.height,
+        };
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error selecting video:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Open camera to record a video
+   */
+  async openVideoCamera(options = {}) {
+    const hasPermission = await this.requestPermissions();
+    if (!hasPermission) return null;
+
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        allowsEditing: true,
+        quality: options.quality || 0.8,
+        videoMaxDuration: options.durationLimit || 60,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const video = result.assets[0];
+        return {
+          uri: video.uri,
+          type: video.type,
+          duration: video.duration,
+          width: video.width,
+          height: video.height,
+        };
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error recording video:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Upload a video to Supabase Storage
+   */
+  async uploadVideo(video, groupId, userId) {
+    try {
+      // Generate unique filename
+      const timestamp = Date.now();
+      const fileName = `${groupId}/${userId}/video_${timestamp}.mp4`;
+
+      // Create form data
+      const formData = new FormData();
+      formData.append('file', {
+        uri: video.uri,
+        type: 'video/mp4',
+        name: fileName,
+      });
+
+      // Upload to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from(this.bucketName)
+        .upload(fileName, formData, {
+          contentType: 'video/mp4',
+          upsert: false,
+        });
+
+      if (error) throw error;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from(this.bucketName)
+        .getPublicUrl(fileName);
+
+      return {
+        success: true,
+        data: {
+          url: urlData.publicUrl,
+          path: fileName,
+          duration: video.duration,
+          width: video.width,
+          height: video.height,
+        },
+      };
+    } catch (error) {
+      console.error('Error uploading video:', error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Create the storage bucket if it doesn't exist
    */
   async createBucket() {
     try {
       const { data, error } = await supabase.storage.createBucket(this.bucketName, {
         public: false,
-        fileSizeLimit: 10485760, // 10MB
-        allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+        fileSizeLimit: 52428800, // 50MB for videos
+        allowedMimeTypes: [
+          'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+          'video/mp4', 'video/quicktime', 'video/x-msvideo'
+        ],
       });
 
       if (error) {

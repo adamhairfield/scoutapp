@@ -3,15 +3,16 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  TouchableOpacity,
   FlatList,
+  TouchableOpacity,
+  Image,
+  ScrollView,
   Alert,
   RefreshControl,
-  Dimensions,
   StatusBar,
-  Image,
+  Dimensions,
 } from 'react-native';
+import { Video } from 'expo-av';
 import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,6 +26,20 @@ import GroupOptionsModal from '../components/GroupOptionsModal';
 import PostOptionsModal from '../components/PostOptionsModal';
 import PhotoViewer from '../components/PhotoViewer';
 import Avatar from '../components/Avatar';
+import ReactionsModal from '../components/ReactionsModal';
+
+// Helper function to get reaction emoji
+const getReactionEmoji = (reactionType) => {
+  const reactionMap = {
+    'love': '❤️',
+    'like': '👍',
+    'laugh': '😂',
+    'wow': '😮',
+    'sad': '😢',
+    'angry': '😡',
+  };
+  return reactionMap[reactionType] || '❤️';
+};
 
 const GroupDetailsScreen = ({ navigation, route }) => {
   const { group } = route.params;
@@ -45,6 +60,9 @@ const GroupDetailsScreen = ({ navigation, route }) => {
   const [photoViewerVisible, setPhotoViewerVisible] = useState(false);
   const [selectedPhotos, setSelectedPhotos] = useState([]);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
+  const [reactionsModalVisible, setReactionsModalVisible] = useState(false);
+  const [selectedPostForReaction, setSelectedPostForReaction] = useState(null);
+  const [reactionPosition, setReactionPosition] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     console.log('Group object:', group);
@@ -147,25 +165,44 @@ const GroupDetailsScreen = ({ navigation, route }) => {
 
   const handleLikePost = async (postId) => {
     try {
-      const result = await feedService.togglePostLike(postId, user.id);
+      const currentPost = posts.find(p => p.id === postId);
       
-      if (result.success) {
-        // Update the local state optimistically
-        setPosts(posts.map(post => 
-          post.id === postId 
-            ? { 
-                ...post, 
-                liked: result.liked, 
-                likes: result.liked ? post.likes + 1 : post.likes - 1 
-              }
-            : post
-        ));
+      if (currentPost?.userReaction) {
+        // User has a reaction, remove it
+        const result = await feedService.removeReaction(postId, user.id);
+        if (result.success) {
+          setPosts(posts.map(post => 
+            post.id === postId 
+              ? { 
+                  ...post, 
+                  liked: false,
+                  userReaction: null,
+                  likes: Math.max(0, post.likes - 1)
+                }
+              : post
+          ));
+          loadGroupPosts(); // Reload for accurate counts
+        }
       } else {
-        Alert.alert('Error', result.error || 'Failed to like post');
+        // User has no reaction, add a love reaction
+        const result = await feedService.reactToPost(postId, user.id, 'love');
+        if (result.success) {
+          setPosts(posts.map(post => 
+            post.id === postId 
+              ? { 
+                  ...post, 
+                  liked: true,
+                  userReaction: 'love',
+                  likes: post.likes + 1
+                }
+              : post
+          ));
+          loadGroupPosts(); // Reload for accurate counts
+        }
       }
     } catch (error) {
-      console.error('Error liking post:', error);
-      Alert.alert('Error', 'Failed to like post');
+      console.error('Error handling like:', error);
+      Alert.alert('Error', 'Failed to update reaction');
     }
   };
 
@@ -263,6 +300,105 @@ const GroupDetailsScreen = ({ navigation, route }) => {
     setSelectedPhotos([]);
     setSelectedPhotoIndex(0);
   };
+
+  const handleLongPressHeart = (post, event) => {
+    const { pageX, pageY } = event.nativeEvent;
+    setSelectedPostForReaction(post);
+    setReactionPosition({ x: pageX, y: pageY });
+    setReactionsModalVisible(true);
+  };
+
+  const handleCloseReactions = () => {
+    setReactionsModalVisible(false);
+    setSelectedPostForReaction(null);
+  };
+
+  const handleReaction = async (reaction) => {
+    if (!selectedPostForReaction) return;
+
+    try {
+      const result = await feedService.reactToPost(
+        selectedPostForReaction.id, 
+        user.id, 
+        reaction.name
+      );
+      
+      if (result.success) {
+        // Update the post in local state
+        setPosts(posts.map(post => 
+          post.id === selectedPostForReaction.id 
+            ? { 
+                ...post, 
+                liked: true, // For backward compatibility
+                userReaction: reaction.name,
+                likes: post.totalReactions || post.likes || 0 // Use total reactions if available
+              }
+            : post
+        ));
+        
+        // Reload posts to get accurate counts
+        loadGroupPosts();
+      }
+    } catch (error) {
+      console.error('Error reacting to post:', error);
+      Alert.alert('Error', 'Failed to react to post');
+    }
+  };
+
+  // Extract photos from posts for the Photos tab (only first photo per post)
+  const getGroupPhotos = () => {
+    const photos = [];
+    posts.forEach(post => {
+      if (post.photo_urls && post.photo_urls.length > 0) {
+        // Only show the first photo, but include count info
+        photos.push({
+          id: `${post.id}-first`,
+          url: post.photo_urls[0],
+          postId: post.id,
+          postContent: post.content,
+          author: post.author,
+          timestamp: post.timestamp,
+          allPhotos: post.photo_urls,
+          photoIndex: 0,
+          totalCount: post.photo_urls.length,
+          isMultiple: post.photo_urls.length > 1
+        });
+      } else if (post.photo_url) {
+        photos.push({
+          id: `${post.id}-single`,
+          url: post.photo_url,
+          postId: post.id,
+          postContent: post.content,
+          author: post.author,
+          timestamp: post.timestamp,
+          allPhotos: [post.photo_url],
+          photoIndex: 0,
+          totalCount: 1,
+          isMultiple: false
+        });
+      }
+    });
+    return photos;
+  };
+
+  const renderPhotoItem = ({ item: photo }) => (
+    <TouchableOpacity
+      style={styles.photoGridItem}
+      onPress={() => handleOpenPhotoViewer(photo.allPhotos, photo.photoIndex)}
+    >
+      <Image
+        source={{ uri: photo.url }}
+        style={styles.photoGridImage}
+        resizeMode="cover"
+      />
+      {photo.isMultiple && (
+        <View style={styles.photoCountOverlay}>
+          <Ionicons name="copy-outline" size={16} color="#fff" />
+          <Text style={styles.photoCountText}>{photo.totalCount}</Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
 
   const handleInvite = async () => {
     try {
@@ -380,54 +516,73 @@ const GroupDetailsScreen = ({ navigation, route }) => {
         
         {/* Photo Display */}
         {(post.photo_url || post.photo_urls) && (
-        <View style={styles.postPhotosContainer}>
-          {post.photo_urls && post.photo_urls.length > 0 ? (
-            // Multiple photos
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              style={styles.postPhotosScroll}
-            >
-              {post.photo_urls.map((photoUrl, index) => (
-                <TouchableOpacity 
-                  key={index} 
-                  style={styles.postPhotoItem}
-                  onPress={() => handleOpenPhotoViewer(post.photo_urls, index)}
-                >
-                  <Image 
-                    source={{ uri: photoUrl }} 
-                    style={styles.postPhoto}
-                    resizeMode="cover"
-                  />
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          ) : post.photo_url ? (
-            // Single photo
-            <TouchableOpacity 
-              style={styles.postSinglePhotoContainer}
-              onPress={() => handleOpenPhotoViewer([post.photo_url], 0)}
-            >
-              <Image 
-                source={{ uri: post.photo_url }} 
-                style={styles.postSinglePhoto}
-                resizeMode="cover"
-              />
-            </TouchableOpacity>
-          ) : null}
+          <View style={styles.postPhotosContainer}>
+            {post.photo_urls && post.photo_urls.length > 0 ? (
+              // Multiple photos
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                style={styles.postPhotosScroll}
+              >
+                {post.photo_urls.map((photoUrl, index) => (
+                  <TouchableOpacity 
+                    key={index} 
+                    style={styles.postPhotoItem}
+                    onPress={() => handleOpenPhotoViewer(post.photo_urls, index)}
+                  >
+                    <Image 
+                      source={{ uri: photoUrl }} 
+                      style={styles.postPhoto}
+                      resizeMode="cover"
+                    />
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            ) : (
+              // Single photo
+              <TouchableOpacity onPress={() => handleOpenPhotoViewer([post.photo_url], 0)}>
+                <Image 
+                  source={{ uri: post.photo_url }} 
+                  style={[styles.postPhoto, { width: '100%', marginRight: 0 }]}
+                  resizeMode="cover"
+                />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+      {/* Video Display */}
+      {post.video_url && (
+        <View style={styles.postVideoContainer}>
+          <Video
+            source={{ uri: post.video_url }}
+            style={styles.postVideo}
+            useNativeControls
+            resizeMode="contain"
+            shouldPlay={false}
+            isLooping={false}
+          />
         </View>
       )}
-      
+
       <View style={styles.postActions}>
         <TouchableOpacity 
           style={styles.postAction}
           onPress={() => handleLikePost(post.id)}
+          onLongPress={(event) => handleLongPressHeart(post, event)}
+          delayLongPress={500}
         >
-          <Ionicons 
-            name={post.liked ? "heart" : "heart-outline"} 
-            size={20} 
-            color={post.liked ? "#FF3B30" : "#666"} 
-          />
+          {post.userReaction ? (
+            <Text style={styles.reactionEmoji}>
+              {getReactionEmoji(post.userReaction)}
+            </Text>
+          ) : (
+            <Ionicons 
+              name={post.liked ? "heart" : "heart-outline"} 
+              size={20} 
+              color={post.liked ? "#FF3B30" : "#666"} 
+            />
+          )}
           <Text style={[styles.actionCount, post.liked && styles.likedText]}>
             {post.likes}
           </Text>
@@ -564,7 +719,25 @@ const GroupDetailsScreen = ({ navigation, route }) => {
         />
       )}
 
-      {activeTab !== 'Feed' && (
+      {activeTab === 'Photos' && (
+        <FlatList
+          data={getGroupPhotos()}
+          renderItem={renderPhotoItem}
+          keyExtractor={(item) => item.id}
+          numColumns={3}
+          contentContainerStyle={styles.photosContainer}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={() => (
+            <View style={styles.emptyPhotos}>
+              <Ionicons name="images-outline" size={60} color="#ccc" />
+              <Text style={styles.emptyPhotosText}>No photos yet</Text>
+              <Text style={styles.emptyPhotosSubtext}>Photos from posts will appear here</Text>
+            </View>
+          )}
+        />
+      )}
+
+      {activeTab !== 'Feed' && activeTab !== 'Photos' && (
         <View style={styles.comingSoon}>
           <Ionicons name="construct" size={60} color="#ccc" />
           <Text style={styles.comingSoonText}>{activeTab} Coming Soon</Text>
@@ -607,6 +780,14 @@ const GroupDetailsScreen = ({ navigation, route }) => {
         onClose={handleClosePhotoViewer}
         photos={selectedPhotos}
         initialIndex={selectedPhotoIndex}
+      />
+
+      {/* Reactions Modal */}
+      <ReactionsModal
+        visible={reactionsModalVisible}
+        onClose={handleCloseReactions}
+        onReaction={handleReaction}
+        position={reactionPosition}
       />
     </View>
   );
@@ -897,7 +1078,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   likedText: {
-    color: '#FF3B30',
+    color: '#000',
+  },
+  reactionEmoji: {
+    fontSize: 20,
+    marginRight: 2,
   },
   commentsSection: {
     marginTop: 15,
@@ -950,17 +1135,76 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 60,
   },
   comingSoonText: {
     fontSize: 18,
-    color: '#666',
+    color: '#999',
     marginTop: 15,
+  },
+  photosContainer: {
+    padding: 2,
+  },
+  photoGridItem: {
+    flex: 1,
+    margin: 1,
+    aspectRatio: 1,
+    maxWidth: '33.33%',
+  },
+  photoGridImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 4,
+  },
+  photoCountOverlay: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  photoCountText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  emptyPhotos: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  emptyPhotosText: {
+    fontSize: 18,
+    color: '#999',
+    marginTop: 15,
+    fontWeight: '500',
+  },
+  emptyPhotosSubtext: {
+    fontSize: 14,
+    color: '#ccc',
+    marginTop: 5,
+    textAlign: 'center',
   },
   postPhotosContainer: {
     marginBottom: 15,
   },
+  postVideoContainer: {
+    marginBottom: 15,
+  },
+  postVideo: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    backgroundColor: '#000',
+  },
   postPhotosScroll: {
-    maxHeight: 200,
   },
   postPhotoItem: {
     marginRight: 10,

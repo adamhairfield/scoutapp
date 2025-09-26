@@ -16,11 +16,12 @@ import { photoUploadService } from '../services/PhotoUploadService';
 const CreatePostInput = memo(({ user, onCreatePost, groupId }) => {
   const [postText, setPostText] = useState('');
   const [selectedPhotos, setSelectedPhotos] = useState([]);
+  const [selectedVideo, setSelectedVideo] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
 
   const handlePost = async () => {
-    if (!postText.trim() && selectedPhotos.length === 0) {
-      Alert.alert('Empty Post', 'Please add some text or photos to your post.');
+    if (!postText.trim() && selectedPhotos.length === 0 && !selectedVideo) {
+      Alert.alert('Empty Post', 'Please add some text, photos, or a video to your post.');
       return;
     }
 
@@ -28,6 +29,7 @@ const CreatePostInput = memo(({ user, onCreatePost, groupId }) => {
     
     try {
       let photoUrls = [];
+      let videoUrl = null;
       
       // Upload photos if any are selected
       if (selectedPhotos.length > 0) {
@@ -46,12 +48,35 @@ const CreatePostInput = memo(({ user, onCreatePost, groupId }) => {
         }
       }
 
+      // Upload video if selected
+      if (selectedVideo) {
+        const uploadResult = await photoUploadService.uploadVideo(
+          selectedVideo,
+          groupId,
+          user.id
+        );
+        
+        if (uploadResult.success) {
+          videoUrl = uploadResult.data.url;
+        } else {
+          Alert.alert('Upload Error', 'Failed to upload video. Please try again.');
+          setIsUploading(false);
+          return;
+        }
+      }
+
+      // Determine post type
+      let postType = 'text';
+      if (videoUrl) postType = 'video';
+      else if (selectedPhotos.length > 0) postType = 'image';
+
       // Create post data
       const postData = {
         content: postText.trim(),
-        post_type: selectedPhotos.length > 0 ? 'image' : 'text',
+        post_type: postType,
         photo_urls: photoUrls.length > 1 ? photoUrls : null,
         photo_url: photoUrls.length === 1 ? photoUrls[0] : null,
+        video_url: videoUrl,
       };
 
       await onCreatePost(postData);
@@ -59,6 +84,7 @@ const CreatePostInput = memo(({ user, onCreatePost, groupId }) => {
       // Reset form
       setPostText('');
       setSelectedPhotos([]);
+      setSelectedVideo(null);
     } catch (error) {
       console.error('Error creating post:', error);
       Alert.alert('Error', 'Failed to create post. Please try again.');
@@ -105,6 +131,46 @@ const CreatePostInput = memo(({ user, onCreatePost, groupId }) => {
     setSelectedPhotos(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handleSelectVideo = async () => {
+    try {
+      const video = await photoUploadService.openVideoLibrary({
+        quality: 0.8,
+        durationLimit: 60, // 60 seconds max
+      });
+
+      if (video) {
+        setSelectedVideo(video);
+        // Clear photos when video is selected (can't have both)
+        setSelectedPhotos([]);
+      }
+    } catch (error) {
+      console.error('Error selecting video:', error);
+      Alert.alert('Error', 'Failed to select video');
+    }
+  };
+
+  const handleRecordVideo = async () => {
+    try {
+      const video = await photoUploadService.openVideoCamera({
+        quality: 0.8,
+        durationLimit: 60, // 60 seconds max
+      });
+
+      if (video) {
+        setSelectedVideo(video);
+        // Clear photos when video is selected (can't have both)
+        setSelectedPhotos([]);
+      }
+    } catch (error) {
+      console.error('Error recording video:', error);
+      Alert.alert('Error', 'Failed to record video');
+    }
+  };
+
+  const handleRemoveVideo = () => {
+    setSelectedVideo(null);
+  };
+
   const showPhotoOptions = () => {
     Alert.alert(
       'Add Photo',
@@ -112,6 +178,18 @@ const CreatePostInput = memo(({ user, onCreatePost, groupId }) => {
       [
         { text: 'Camera', onPress: handleTakePhoto },
         { text: 'Photo Library', onPress: handleSelectPhotos },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
+  const showVideoOptions = () => {
+    Alert.alert(
+      'Add Video',
+      'Choose how you want to add a video',
+      [
+        { text: 'Record Video', onPress: handleRecordVideo },
+        { text: 'Video Library', onPress: handleSelectVideo },
         { text: 'Cancel', style: 'cancel' },
       ]
     );
@@ -162,6 +240,27 @@ const CreatePostInput = memo(({ user, onCreatePost, groupId }) => {
           </ScrollView>
         </View>
       )}
+
+      {/* Video Preview Section */}
+      {selectedVideo && (
+        <View style={styles.videoPreviewContainer}>
+          <View style={styles.videoPreviewItem}>
+            <View style={styles.videoThumbnail}>
+              <Ionicons name="play-circle" size={40} color="#fff" />
+              <Text style={styles.videoText}>Video Selected</Text>
+              <Text style={styles.videoDuration}>
+                {selectedVideo.duration ? `${Math.round(selectedVideo.duration)}s` : ''}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.removeVideoButton}
+              onPress={handleRemoveVideo}
+            >
+              <Ionicons name="close-circle" size={20} color="#FF3B30" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
       
       <View style={styles.createPostActions}>
         <TouchableOpacity 
@@ -173,7 +272,11 @@ const CreatePostInput = memo(({ user, onCreatePost, groupId }) => {
           <Text style={styles.actionText}>Photo</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={showVideoOptions}
+          disabled={isUploading}
+        >
           <Ionicons name="videocam" size={20} color="#2196F3" />
           <Text style={styles.actionText}>Video</Text>
         </TouchableOpacity>
@@ -183,7 +286,7 @@ const CreatePostInput = memo(({ user, onCreatePost, groupId }) => {
           <Text style={styles.actionText}>Link</Text>
         </TouchableOpacity>
         
-        {(postText.trim() || selectedPhotos.length > 0) && (
+        {(postText.trim() || selectedPhotos.length > 0 || selectedVideo) && (
           <TouchableOpacity 
             style={[styles.postButton, isUploading && styles.postButtonDisabled]} 
             onPress={handlePost}
@@ -274,6 +377,44 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
   },
   removePhotoButton: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  videoPreviewContainer: {
+    marginBottom: 15,
+  },
+  videoPreviewItem: {
+    position: 'relative',
+    width: 120,
+  },
+  videoThumbnail: {
+    width: 120,
+    height: 80,
+    backgroundColor: '#2196F3',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  videoText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  videoDuration: {
+    color: '#fff',
+    fontSize: 10,
+    marginTop: 2,
+  },
+  removeVideoButton: {
     position: 'absolute',
     top: -5,
     right: -5,
