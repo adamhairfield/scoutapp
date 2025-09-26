@@ -286,24 +286,21 @@ const GroupsScreen = ({ navigation }) => {
       {/* Action Buttons */}
       <View style={styles.actionButtons}>
         <TouchableOpacity style={styles.actionButton} onPress={handleCreateGroup}>
-          <Ionicons name="add-circle" size={20} color="#667eea" />
+          <Ionicons name="add-circle" size={18} color="#667eea" />
           <Text style={styles.actionButtonText}>Create Group</Text>
-          <Ionicons name="chevron-forward" size={16} color="#666" />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton} onPress={handleCreateTeam}>
-          <Ionicons name="trophy" size={20} color="#667eea" />
+          <Ionicons name="trophy" size={18} color="#667eea" />
           <Text style={styles.actionButtonText}>Create Team</Text>
-          <Ionicons name="chevron-forward" size={16} color="#666" />
         </TouchableOpacity>
         
         <TouchableOpacity 
           style={styles.actionButton} 
           onPress={() => navigation.navigate('JoinByInvite')}
         >
-          <Ionicons name="people" size={20} color="#667eea" />
-          <Text style={styles.actionButtonText}>Join by Invite Code</Text>
-          <Ionicons name="chevron-forward" size={16} color="#666" />
+          <Ionicons name="people" size={18} color="#667eea" />
+          <Text style={styles.actionButtonText}>Join by Code</Text>
         </TouchableOpacity>
       </View>
 
@@ -335,14 +332,17 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   actionButtons: {
+    flexDirection: 'row',
     paddingHorizontal: 20,
-    paddingTop: 120,
-    gap: 12,
+    paddingTop: 140,
+    gap: 8,
+    justifyContent: 'space-between',
   },
   actionButton: {
-    flexDirection: 'row',
+    flex: 1,
+    flexDirection: 'column',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     paddingVertical: 15,
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -351,13 +351,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
-    gap: 12,
+    gap: 8,
   },
   actionButtonText: {
-    flex: 1,
-    fontSize: 16,
+    fontSize: 12,
     color: '#333',
     fontWeight: '500',
+    textAlign: 'center',
   },
   listContainer: {
     padding: 20,

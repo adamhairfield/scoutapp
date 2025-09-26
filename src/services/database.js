@@ -29,54 +29,66 @@ export const groupService = {
   // Get groups for a user (both as leader and member)
   async getUserGroups(userId) {
     try {
-      // Get groups where user is leader
+      // Get groups where user is leader (simpler query)
       const { data: leaderGroups, error: leaderError } = await supabase
         .from('groups')
-        .select(`
-          *,
-          group_members (
-            id
-          ),
-          group_pins!left (
-            id,
-            user_id
-          )
-        `)
+        .select('*')
         .eq('leader_id', userId);
 
       if (leaderError) throw leaderError;
 
-      // Get groups where user is a member
-      const { data: memberGroups, error: memberError } = await supabase
-        .from('groups')
-        .select(`
-          *,
-          group_members!inner (
-            id,
-            player_id
-          ),
-          group_pins!left (
-            id,
-            user_id
-          )
-        `)
-        .eq('group_members.player_id', userId);
+      // Get groups where user is a member (using a separate query to avoid join issues)
+      const { data: membershipData, error: memberError } = await supabase
+        .from('group_members')
+        .select('group_id')
+        .eq('player_id', userId);
 
       if (memberError) throw memberError;
 
+      // Get the actual group data for member groups
+      let memberGroups = [];
+      if (membershipData && membershipData.length > 0) {
+        const memberGroupIds = membershipData.map(m => m.group_id);
+        const { data: memberGroupsData, error: memberGroupsError } = await supabase
+          .from('groups')
+          .select('*')
+          .in('id', memberGroupIds);
+
+        if (memberGroupsError) throw memberGroupsError;
+        memberGroups = memberGroupsData || [];
+      }
+
       // Combine and deduplicate groups
-      const allGroups = [...(leaderGroups || []), ...(memberGroups || [])];
+      const allGroups = [...(leaderGroups || []), ...memberGroups];
       const uniqueGroups = allGroups.filter((group, index, self) => 
         index === self.findIndex(g => g.id === group.id)
       );
 
-      // Add member count and pin status to each group
-      const groupsWithCount = uniqueGroups.map(group => ({
-        ...group,
-        member_count: group.group_members?.length || 0,
-        user_role: leaderGroups?.some(lg => lg.id === group.id) ? 'leader' : 'member',
-        is_pinned: group.group_pins?.some(pin => pin.user_id === userId) || false
-      }));
+      // Get member counts and pin status for each group
+      const groupsWithCount = await Promise.all(
+        uniqueGroups.map(async (group) => {
+          // Get member count
+          const { count: memberCount } = await supabase
+            .from('group_members')
+            .select('*', { count: 'exact', head: true })
+            .eq('group_id', group.id);
+
+          // Check if user has pinned this group
+          const { data: pinData } = await supabase
+            .from('group_pins')
+            .select('id')
+            .eq('group_id', group.id)
+            .eq('user_id', userId)
+            .single();
+
+          return {
+            ...group,
+            member_count: (memberCount || 0) + 1, // +1 for the leader
+            user_role: leaderGroups?.some(lg => lg.id === group.id) ? 'leader' : 'member',
+            is_pinned: !!pinData
+          };
+        })
+      );
 
       return groupsWithCount;
     } catch (error) {
@@ -490,6 +502,37 @@ export const groupService = {
         success: false,
         error: error.message
       };
+    }
+  },
+
+  // Delete a group (only by leader)
+  async deleteGroup(groupId, userId) {
+    try {
+      // First verify the user is the group leader
+      const { data: group, error: fetchError } = await supabase
+        .from('groups')
+        .select('leader_id, name')
+        .eq('id', groupId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      if (group.leader_id !== userId) {
+        return { success: false, error: 'Only group leaders can delete the group' };
+      }
+
+      // Delete the group (CASCADE will handle related records)
+      const { error } = await supabase
+        .from('groups')
+        .delete()
+        .eq('id', groupId);
+
+      if (error) throw error;
+
+      return { success: true, message: `Group "${group.name}" has been deleted successfully` };
+    } catch (error) {
+      console.error('Error deleting group:', error);
+      return { success: false, error: error.message };
     }
   }
 };

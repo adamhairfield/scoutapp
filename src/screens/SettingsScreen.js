@@ -17,6 +17,11 @@ const SettingsScreen = ({ navigation }) => {
 
   const settingsItems = [
     {
+      icon: 'swap-horizontal-outline',
+      title: 'Import from SportsEngine',
+      onPress: () => navigation.navigate('SportsEngineMigration')
+    },
+    {
       icon: 'mail-outline',
       title: 'Ask a Question',
       onPress: () => handleSettingPress('Ask a Question')
@@ -153,7 +158,6 @@ const styles = StyleSheet.create({
   },
   settingsContainer: {
     backgroundColor: '#fff',
-    marginTop: 20,
   },
   settingItem: {
     flexDirection: 'row',

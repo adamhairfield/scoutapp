@@ -68,6 +68,10 @@
     "extra": {
       "eas": {
         "projectId": "71c46caa-79ab-4196-8530-f56a8189e1a3"
+      },
+      "sportsEngineBackend": {
+        "development": "http://192.168.0.152:3001",
+        "production": "https://your-backend-domain.com"
       }
     }
   }

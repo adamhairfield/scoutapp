@@ -24,6 +24,7 @@ import FriendRequestsScreen from '../screens/FriendRequestsScreen';
 import SearchScreen from '../screens/SearchScreen';
 import NotificationTestScreen from '../screens/NotificationTestScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import SportsEngineMigrationScreen from '../screens/SportsEngineMigrationScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -108,6 +109,7 @@ const AppNavigator = () => {
             <Stack.Screen name="FriendRequests" component={FriendRequestsScreen} />
             <Stack.Screen name="Search" component={SearchScreen} />
             <Stack.Screen name="NotificationTest" component={NotificationTestScreen} />
+            <Stack.Screen name="SportsEngineMigration" component={SportsEngineMigrationScreen} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} />

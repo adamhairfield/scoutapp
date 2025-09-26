@@ -15,7 +15,9 @@ const PostOptionsModal = ({
   currentUser, 
   onDeletePost, 
   onEditPost, 
-  onReportPost 
+  onReportPost,
+  onPinPost,
+  isGroupLeader = false
 }) => {
   const isPostAuthor = post?.author?.id === currentUser?.id;
 
@@ -66,6 +68,27 @@ const PostOptionsModal = ({
     );
   };
 
+  const handlePinPost = () => {
+    const action = post?.pinned ? 'Unpin' : 'Pin';
+    Alert.alert(
+      `${action} Post`,
+      `Are you sure you want to ${action.toLowerCase()} this post ${post?.pinned ? 'from' : 'to'} the top of the feed?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: action,
+          onPress: () => {
+            onPinPost(post.id);
+            onClose();
+          },
+        },
+      ]
+    );
+  };
+
   const handleCopyLink = () => {
     // TODO: Implement copy link functionality
     Alert.alert('Info', 'Copy link functionality coming soon!');
@@ -92,6 +115,17 @@ const PostOptionsModal = ({
 
       {/* Options */}
       <View style={styles.optionsContainer}>
+        {/* Pin option for group leaders */}
+        {isGroupLeader && (
+          <DrawerOption
+            icon={post?.pinned ? "pin" : "pin-outline"}
+            iconColor={post?.pinned ? "#FF6B6B" : "#667eea"}
+            title={post?.pinned ? "Unpin Post" : "Pin to Top"}
+            titleColor={post?.pinned ? "#FF6B6B" : undefined}
+            onPress={handlePinPost}
+          />
+        )}
+
         {isPostAuthor && (
           <>
             <DrawerOption

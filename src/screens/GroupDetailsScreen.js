@@ -226,6 +226,32 @@ const GroupDetailsScreen = ({ navigation, route }) => {
     }
   };
 
+  const handlePinPost = async (postId) => {
+    try {
+      const result = await feedService.togglePostPin(postId, user.id);
+      
+      if (result.success) {
+        // Update the post in local state
+        setPosts(posts.map(post => 
+          post.id === postId 
+            ? { ...post, pinned: result.pinned }
+            : post
+        ));
+        
+        const action = result.pinned ? 'pinned' : 'unpinned';
+        Alert.alert('Success', `Post ${action} successfully`);
+        
+        // Reload posts to get correct ordering
+        loadGroupPosts();
+      } else {
+        Alert.alert('Error', result.error || 'Failed to pin post');
+      }
+    } catch (error) {
+      console.error('Error pinning post:', error);
+      Alert.alert('Error', 'Failed to pin post');
+    }
+  };
+
   const handleOpenPhotoViewer = (photos, initialIndex = 0) => {
     setSelectedPhotos(photos);
     setSelectedPhotoIndex(initialIndex);
@@ -571,6 +597,8 @@ const GroupDetailsScreen = ({ navigation, route }) => {
         onDeletePost={handleDeletePost}
         onEditPost={handleEditPost}
         onReportPost={handleReportPost}
+        onPinPost={handlePinPost}
+        isGroupLeader={group?.leader_id === user?.id}
       />
 
       {/* Photo Viewer */}

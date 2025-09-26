@@ -164,8 +164,31 @@ const GroupOptionsModal = ({ visible, onClose, group, user, navigation }) => {
         'Are you sure you want to delete this group? This action cannot be undone and all group data will be lost.',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Delete', style: 'destructive', onPress: () => {
-            Alert.alert('Delete Group', 'Group deletion will be implemented here');
+          { text: 'Delete', style: 'destructive', onPress: async () => {
+            try {
+              const result = await groupService.deleteGroup(group.id, user.id);
+              
+              if (result.success) {
+                Alert.alert(
+                  'Group Deleted',
+                  result.message,
+                  [
+                    {
+                      text: 'OK',
+                      onPress: () => {
+                        // Navigate back to groups list
+                        navigation.navigate('Groups');
+                      }
+                    }
+                  ]
+                );
+              } else {
+                Alert.alert('Error', result.error);
+              }
+            } catch (error) {
+              console.error('Error deleting group:', error);
+              Alert.alert('Error', 'Failed to delete group. Please try again.');
+            }
           }}
         ]
       );
