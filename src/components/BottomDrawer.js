@@ -10,6 +10,7 @@ import {
   PanResponder,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
 
 const { height: screenHeight } = Dimensions.get('window');
 
@@ -18,8 +19,11 @@ const BottomDrawer = ({
   onClose, 
   title,
   children,
-  height = 'auto' // 'auto', number, or percentage string like '50%'
+  height = 'auto', // 'auto', number, or percentage string like '50%'
+  theme: propTheme
 }) => {
+  const contextTheme = useTheme();
+  const theme = propTheme || contextTheme.theme;
   const slideAnim = useRef(new Animated.Value(screenHeight)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
 
@@ -132,6 +136,7 @@ const BottomDrawer = ({
         style={[
           styles.drawer,
           {
+            backgroundColor: theme.colors.surface,
             transform: [{ translateY: slideAnim }],
             height: getDrawerHeight(),
           }
@@ -140,15 +145,15 @@ const BottomDrawer = ({
       >
         {/* Handle bar */}
         <View style={styles.handleContainer}>
-          <View style={styles.handle} />
+          <View style={[styles.handle, { backgroundColor: theme.colors.border }]} />
         </View>
 
         {/* Header */}
         {title && (
-          <View style={styles.header}>
-            <Text style={styles.title}>{title}</Text>
+          <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
+            <Text style={[styles.title, { color: theme.colors.text }]}>{title}</Text>
             <TouchableOpacity onPress={closeDrawer} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color="#666" />
+              <Ionicons name="close" size={24} color={theme.colors.textSecondary} />
             </TouchableOpacity>
           </View>
         )}

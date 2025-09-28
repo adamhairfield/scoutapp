@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { friendsService } from '../services/friendsService';
 import { groupService } from '../services/database';
 import { supabase } from '../config/supabase';
@@ -20,6 +21,7 @@ import Avatar from '../components/Avatar';
 
 const SearchScreen = ({ navigation }) => {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState('people');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -290,19 +292,15 @@ const SearchScreen = ({ navigation }) => {
   );
 
   const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <Ionicons 
-        name={activeTab === 'people' ? 'people-outline' : 'search-outline'} 
-        size={60} 
-        color="#ccc" 
-      />
-      <Text style={styles.emptyTitle}>
+    <View style={styles.emptyState}>
+      <Ionicons name="search-outline" size={64} color={theme.colors.textTertiary} />
+      <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>
         {hasSearched 
           ? `No ${activeTab === 'people' ? 'users' : 'groups'} found`
           : `Search for ${activeTab === 'people' ? 'friends' : 'groups'}`
         }
       </Text>
-      <Text style={styles.emptySubtitle}>
+      <Text style={[styles.emptySubtitle, { color: theme.colors.textSecondary }]}>
         {hasSearched 
           ? `Try searching with different ${activeTab === 'people' ? 'name or email' : 'keywords'}`
           : `Type in the search bar to find ${activeTab === 'people' ? 'people to add as friends' : 'groups to join'}`
@@ -312,10 +310,10 @@ const SearchScreen = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Search</Text>
+      <View style={[styles.header, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
+        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Search</Text>
         <TouchableOpacity
           style={styles.requestsButton}
           onPress={() => navigation.navigate('FriendRequests')}
@@ -325,7 +323,7 @@ const SearchScreen = ({ navigation }) => {
       </View>
 
       {/* Tab Bar */}
-      <View style={styles.tabBar}>
+      <View style={[styles.tabBar, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'people' && styles.activeTab]}
           onPress={() => handleTabChange('people')}
@@ -333,9 +331,13 @@ const SearchScreen = ({ navigation }) => {
           <Ionicons 
             name={activeTab === 'people' ? 'people' : 'people-outline'} 
             size={20} 
-            color={activeTab === 'people' ? '#667eea' : '#666'} 
+            color={activeTab === 'people' ? '#667eea' : theme.colors.textSecondary} 
           />
-          <Text style={[styles.tabText, activeTab === 'people' && styles.activeTabText]}>
+          <Text style={[
+            styles.tabText, 
+            { color: theme.colors.textSecondary },
+            activeTab === 'people' && [styles.activeTabText, { color: '#667eea' }]
+          ]}>
             People
           </Text>
         </TouchableOpacity>
@@ -346,21 +348,26 @@ const SearchScreen = ({ navigation }) => {
           <Ionicons 
             name={activeTab === 'groups' ? 'flag' : 'flag-outline'} 
             size={20} 
-            color={activeTab === 'groups' ? '#667eea' : '#666'} 
+            color={activeTab === 'groups' ? '#667eea' : theme.colors.textSecondary} 
           />
-          <Text style={[styles.tabText, activeTab === 'groups' && styles.activeTabText]}>
+          <Text style={[
+            styles.tabText, 
+            { color: theme.colors.textSecondary },
+            activeTab === 'groups' && [styles.activeTabText, { color: '#667eea' }]
+          ]}>
             Groups
           </Text>
         </TouchableOpacity>
       </View>
 
       {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color="#999" />
+      <View style={[styles.searchContainer, { backgroundColor: theme.colors.background }]}>
+        <View style={[styles.searchBar, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+          <Ionicons name="search" size={20} color={theme.colors.textSecondary} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: theme.colors.text }]}
             placeholder={activeTab === 'people' ? 'Search by name or email...' : 'Search groups...'}
+            placeholderTextColor={theme.colors.placeholder}
             value={searchQuery}
             onChangeText={(text) => {
               setSearchQuery(text);

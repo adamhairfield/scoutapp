@@ -15,11 +15,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { groupService } from '../services/database';
 import { imageUploadService } from '../services/imageUpload';
 
 const CreateGroupScreen = ({ navigation, route }) => {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const groupType = route?.params?.groupType || 'group'; // Default to 'group' if not specified
   const [groupName, setGroupName] = useState('');
   const [sport, setSport] = useState('');
@@ -133,63 +135,63 @@ const CreateGroupScreen = ({ navigation, route }) => {
   };
 
   const SettingRow = ({ title, subtitle, value, onPress, showArrow = true }) => (
-    <TouchableOpacity style={styles.settingRow} onPress={onPress}>
+    <TouchableOpacity style={[styles.settingRow, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]} onPress={onPress}>
       <View style={styles.settingContent}>
-        <Text style={styles.settingTitle}>{title}</Text>
-        {subtitle && <Text style={styles.settingSubtitle}>{subtitle}</Text>}
+        <Text style={[styles.settingTitle, { color: theme.colors.text }]}>{title}</Text>
+        {subtitle && <Text style={[styles.settingSubtitle, { color: theme.colors.textSecondary }]}>{subtitle}</Text>}
       </View>
       <View style={styles.settingRight}>
-        <Text style={styles.settingValue}>{value}</Text>
+        <Text style={[styles.settingValue, { color: theme.colors.textSecondary }]}>{value}</Text>
         {showArrow && <Ionicons name="chevron-forward" size={20} color="#007AFF" />}
       </View>
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
       <KeyboardAvoidingView
         style={styles.keyboardContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
           <TouchableOpacity
             style={styles.cancelButton}
             onPress={() => navigation.goBack()}
           >
-            <Text style={styles.cancelText}>Cancel</Text>
+            <Text style={[styles.cancelText, { color: theme.colors.primary }]}>Cancel</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Create {groupType === 'team' ? 'Team' : 'Group'}</Text>
+          <Text style={[styles.title, { color: theme.colors.text }]}>Create {groupType === 'team' ? 'Team' : 'Group'}</Text>
           <View style={styles.headerSpacer} />
         </View>
 
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           {/* Title Input */}
-          <View style={styles.titleSection}>
+          <View style={[styles.titleSection, { backgroundColor: theme.colors.surface }]}>
             <TextInput
-              style={styles.titleInput}
+              style={[styles.titleInput, { color: theme.colors.text }]}
               value={groupName}
               onChangeText={setGroupName}
               placeholder="Enter a title"
-              placeholderTextColor="#C7C7CC"
+              placeholderTextColor={theme.colors.placeholder}
             />
           </View>
 
           {/* Cover Photo */}
-          <TouchableOpacity style={styles.coverPhotoSection} onPress={pickImage}>
+          <TouchableOpacity style={[styles.coverPhotoSection, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]} onPress={pickImage}>
             <View style={styles.coverPhotoContent}>
               {coverImage ? (
                 <Image source={{ uri: coverImage }} style={styles.coverPreview} />
               ) : (
                 <View style={styles.coverPhotoIcon}>
-                  <Ionicons name="image-outline" size={24} color="#8E8E93" />
+                  <Ionicons name="image-outline" size={24} color={theme.colors.textSecondary} />
                 </View>
               )}
               <View style={styles.coverPhotoText}>
-                <Text style={styles.coverPhotoTitle}>
+                <Text style={[styles.coverPhotoTitle, { color: theme.colors.text }]}>
                   {coverImage ? 'Change Cover Photo' : 'Add Cover Photo'}
                 </Text>
-                <Text style={styles.coverPhotoSubtitle}>
+                <Text style={[styles.coverPhotoSubtitle, { color: theme.colors.textSecondary }]}>
                   {coverImage 
                     ? 'Tap to select a different image'
                     : 'Upload an image or create your own custom cover'

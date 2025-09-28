@@ -1,0 +1,440 @@
+import { StyleSheet, Dimensions } from 'react-native';
+
+const { width } = Dimensions.get('window');
+
+export const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
+  headerContainer: {
+    position: 'relative',
+  },
+  headerImage: {
+    width: '100%',
+    height: 200,
+  },
+  headerGradient: {
+    width: '100%',
+    height: 200,
+  },
+  headerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  headerContent: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'space-between',
+    paddingTop: 60,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  backButton: {
+    padding: 5,
+  },
+  searchButton: {
+    padding: 5,
+  },
+  menuButton: {
+    padding: 5,
+  },
+  searchInputContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 20,
+    marginHorizontal: 10,
+    paddingHorizontal: 15,
+  },
+  searchInput: {
+    flex: 1,
+    color: '#fff',
+    fontSize: 16,
+    paddingVertical: 8,
+    backgroundColor: 'transparent',
+  },
+  searchCloseButton: {
+    padding: 5,
+    marginLeft: 5,
+  },
+  groupInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  groupStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  memberAvatars: {
+    flexDirection: 'row',
+    marginRight: 15,
+  },
+  memberAvatar: {
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  statsText: {
+    alignItems: 'flex-start',
+  },
+  memberCount: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  groupType: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 14,
+  },
+  inviteButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  inviteButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    paddingTop: 10,
+  },
+  tab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  activeTab: {
+    borderBottomWidth: 2,
+    borderBottomColor: '#667eea',
+  },
+  tabText: {
+    fontSize: 16,
+    color: '#666',
+  },
+  activeTabText: {
+    color: '#667eea',
+    fontWeight: '600',
+  },
+  feedContainer: {
+    paddingBottom: 20,
+  },
+  postContainer: {
+    backgroundColor: '#fff',
+    marginBottom: 12,
+    marginHorizontal: 15,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  postHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  postAuthorAvatar: {
+    marginRight: 12,
+  },
+  postAuthorInfo: {
+    flex: 1,
+  },
+  postAuthorName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  postTimestamp: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  postOptionsButton: {
+    padding: 5,
+  },
+  postContent: {
+    fontSize: 16,
+    lineHeight: 22,
+    color: '#333',
+    marginBottom: 15,
+  },
+  postActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  postAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 20,
+  },
+  actionCount: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 6,
+  },
+  likedText: {
+    color: '#FF3B30',
+  },
+  reactionEmoji: {
+    fontSize: 20,
+    marginRight: 6,
+  },
+  commentsSection: {
+    marginTop: 15,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  comment: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  commentAvatar: {
+    marginRight: 10,
+  },
+  commentBubble: {
+    flex: 1,
+    backgroundColor: '#f8f8f8',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginRight: 10,
+  },
+  commentAuthor: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 2,
+  },
+  commentContent: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 18,
+  },
+  commentTime: {
+    fontSize: 11,
+    color: '#999',
+    alignSelf: 'flex-end',
+  },
+  photosContainer: {
+    padding: 15,
+  },
+  photoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  photoGridItem: {
+    width: (width - 90) / 3,
+    height: (width - 90) / 3,
+    marginBottom: 15,
+    marginHorizontal: 5,
+    borderRadius: 8,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  photoGridImage: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#f0f0f0',
+  },
+  photoCountOverlay: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  photoCountText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  videoPlayOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 4,
+  },
+  videoDurationOverlay: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  emptyPhotos: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  emptyPhotosText: {
+    fontSize: 18,
+    color: '#999',
+    fontWeight: '600',
+    marginTop: 20,
+    textAlign: 'center',
+  },
+  emptyPhotosSubtext: {
+    fontSize: 14,
+    color: '#ccc',
+    marginTop: 5,
+    textAlign: 'center',
+  },
+  membersContainer: {
+    padding: 20,
+  },
+  memberItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  memberInfo: {
+    flex: 1,
+  },
+  memberNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  memberName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginRight: 8,
+  },
+  hostBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF8DC',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+  },
+  hostText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#B8860B',
+    marginLeft: 4,
+  },
+  memberRole: {
+    fontSize: 14,
+    color: '#666',
+  },
+  hostIcon: {
+    marginLeft: 10,
+  },
+  emptyMembers: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  emptyMembersText: {
+    fontSize: 18,
+    color: '#999',
+    fontWeight: '600',
+    marginTop: 20,
+    textAlign: 'center',
+  },
+  emptyMembersSubtext: {
+    fontSize: 14,
+    color: '#ccc',
+    marginTop: 5,
+    textAlign: 'center',
+  },
+  postPhotosContainer: {
+    marginBottom: 15,
+  },
+  postVideoContainer: {
+    marginBottom: 15,
+  },
+  postVideo: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    backgroundColor: '#000',
+  },
+  postPhotosScroll: {
+  },
+  postPhotoItem: {
+    marginRight: 10,
+  },
+  postPhoto: {
+    width: 150,
+    height: 150,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+  },
+  postSinglePhotoContainer: {
+    width: '100%',
+  },
+  postSinglePhoto: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+  },
+  comingSoon: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  comingSoonText: {
+    fontSize: 18,
+    color: '#999',
+    marginTop: 15,
+    fontWeight: '500',
+  },
+});

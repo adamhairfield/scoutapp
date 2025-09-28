@@ -10,15 +10,18 @@ import {
   Platform,
   Alert,
   RefreshControl,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { messageService } from '../services/database';
 import Avatar from '../components/Avatar';
 
 const MessagesScreen = ({ navigation }) => {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -124,7 +127,7 @@ const MessagesScreen = ({ navigation }) => {
 
   const ConversationItem = ({ item }) => (
     <TouchableOpacity
-      style={styles.conversationItem}
+      style={[styles.conversationItem, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}
       onPress={() => {
         setSelectedConversation(item);
         loadMessages(item);
@@ -144,10 +147,10 @@ const MessagesScreen = ({ navigation }) => {
       </View>
       <View style={styles.conversationContent}>
         <View style={styles.conversationHeader}>
-          <Text style={styles.conversationName}>{item.name}</Text>
-          <Text style={styles.timestamp}>{item.timestamp}</Text>
+          <Text style={[styles.conversationName, { color: theme.colors.text }]}>{item.name}</Text>
+          <Text style={[styles.timestamp, { color: theme.colors.textTertiary }]}>{item.timestamp}</Text>
         </View>
-        <Text style={styles.lastMessage} numberOfLines={1}>
+        <Text style={[styles.lastMessage, { color: theme.colors.textSecondary }]} numberOfLines={1}>
           {item.lastMessage}
         </Text>
       </View>
@@ -157,31 +160,35 @@ const MessagesScreen = ({ navigation }) => {
   const MessageItem = ({ item }) => (
     <View style={[
       styles.messageContainer,
-      item.sender === 'me' ? styles.myMessage : styles.otherMessage
+      item.sender === 'me' ? styles.myMessage : [styles.otherMessage, { backgroundColor: theme.colors.surface }]
     ]}>
       <Text style={[
         styles.messageText,
-        item.sender === 'me' ? styles.myMessageText : styles.otherMessageText
+        item.sender === 'me' ? styles.myMessageText : [styles.otherMessageText, { color: theme.colors.text }]
       ]}>
         {item.text}
       </Text>
-      <Text style={styles.messageTime}>{item.timestamp}</Text>
+      <Text style={[styles.messageTime, { color: theme.colors.textTertiary }]}>{item.timestamp}</Text>
     </View>
   );
 
   if (selectedConversation) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
+        <StatusBar 
+          barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} 
+          backgroundColor={theme.colors.background}
+        />
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-        <View style={styles.chatHeader}>
+        <View style={[styles.chatHeader, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => setSelectedConversation(null)}
           >
-            <Ionicons name="arrow-back" size={24} color="#333" />
+            <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
           </TouchableOpacity>
           <View style={styles.chatHeaderCenter}>
             <Avatar
@@ -189,7 +196,7 @@ const MessagesScreen = ({ navigation }) => {
               name={selectedConversation.name}
               size={32}
             />
-            <Text style={styles.chatTitle}>{selectedConversation.name}</Text>
+            <Text style={[styles.chatTitle, { color: theme.colors.text }]}>{selectedConversation.name}</Text>
           </View>
           <TouchableOpacity style={styles.callButton}>
             <Ionicons name="call" size={24} color="#667eea" />
@@ -200,17 +207,17 @@ const MessagesScreen = ({ navigation }) => {
           data={messages}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <MessageItem item={item} />}
-          style={styles.messagesList}
+          style={[styles.messagesList, { backgroundColor: theme.colors.background }]}
           contentContainerStyle={styles.messagesContent}
         />
 
-        <View style={styles.inputContainer}>
+        <View style={[styles.inputContainer, { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.border }]}>
           <TextInput
-            style={styles.messageInput}
+            style={[styles.messageInput, { backgroundColor: theme.colors.background, color: theme.colors.text, borderColor: theme.colors.border }]}
             value={newMessage}
             onChangeText={setNewMessage}
             placeholder="Type a message..."
-            placeholderTextColor="#999"
+            placeholderTextColor={theme.colors.placeholder}
             multiline
           />
           <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
@@ -223,15 +230,19 @@ const MessagesScreen = ({ navigation }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
+      <StatusBar 
+        barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} 
+        backgroundColor={theme.colors.background}
+      />
+      <View style={[styles.header, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>Messages</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]}>Messages</Text>
         <TouchableOpacity 
           style={styles.newMessageButton}
           onPress={() => navigation.navigate('NewMessage')}

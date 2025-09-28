@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,12 +9,14 @@ import {
   Alert,
   TextInput,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import ProfilePictureUpload from '../components/ProfilePictureUpload';
 import AppHeader from '../components/AppHeader';
 import { profileService } from '../services/profileService';
@@ -25,6 +27,7 @@ const { width } = Dimensions.get('window');
 
 const ProfileScreen = ({ navigation }) => {
   const { user, logout, refreshUserProfile } = useAuth();
+  const { theme } = useTheme();
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(user.name || 'Adam Hairfield');
@@ -35,14 +38,22 @@ const ProfileScreen = ({ navigation }) => {
   const [editedBio, setEditedBio] = useState('');
   const [profileData, setProfileData] = useState({
     name: user.name || 'Adam Hairfield',
-    coverPhoto: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=800&h=600&fit=crop',
-    friends: '0',
-    groups: '0',
     bio: '',
+    coverPhoto: null,
+    groups: '0',
     isPublic: true,
   });
 
-  // Load user profile on component mount
+  // Update status bar when screen is focused or theme changes
+  useFocusEffect(
+    useCallback(() => {
+      StatusBar.setBarStyle(theme.mode === 'dark' ? 'light-content' : 'dark-content', true);
+      if (Platform.OS === 'android') {
+        StatusBar.setBackgroundColor(theme.colors.background, true);
+      }
+    }, [theme.mode, theme.colors.background])
+  );
+
   React.useEffect(() => {
     loadUserProfile();
     loadFriendsCount();
@@ -231,10 +242,10 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   const StatCard = ({ label, value, icon }) => (
-    <View style={styles.statCard}>
+    <View style={[styles.statCard, { backgroundColor: theme.colors.surface }]}>
       <Ionicons name={icon} size={24} color="#667eea" />
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={[styles.statValue, { color: theme.colors.text }]}>{value}</Text>
+      <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>{label}</Text>
     </View>
   );
 
@@ -246,7 +257,11 @@ const ProfileScreen = ({ navigation }) => {
   );
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]} showsVerticalScrollIndicator={false}>
+        <StatusBar 
+          barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} 
+          backgroundColor={theme.colors.background}
+        />
         {/* Cover Photo Header */}
         <View style={styles.coverContainer}>
           <ProfilePictureUpload
@@ -291,12 +306,12 @@ const ProfileScreen = ({ navigation }) => {
         </View>
 
         {/* Profile Info */}
-        <View style={styles.profileInfo}>
+        <View style={[styles.profileInfo, { backgroundColor: theme.colors.surface }]}>
           <View style={styles.nameSection}>
             {isEditingName ? (
               <View style={styles.nameEditContainer}>
                 <TextInput
-                  style={styles.nameInput}
+                  style={[styles.nameInput, { color: theme.colors.text, backgroundColor: theme.colors.background, borderColor: theme.colors.border }]}
                   value={editedName}
                   onChangeText={(text) => {
                     console.log('Name text changed to:', text);
@@ -309,6 +324,7 @@ const ProfileScreen = ({ navigation }) => {
                     handleNameSave();
                   }}
                   placeholder="Enter your name"
+                  placeholderTextColor={theme.colors.placeholder}
                   maxLength={50}
                 />
                 <View style={styles.nameEditActions}>
@@ -338,7 +354,7 @@ const ProfileScreen = ({ navigation }) => {
                 delayLongPress={500}
                 activeOpacity={0.8}
               >
-                <Text style={styles.profileName}>{profileData.name}</Text>
+                <Text style={[styles.profileName, { color: theme.colors.text }]}>{profileData.name}</Text>
               </TouchableOpacity>
             )}
             <Ionicons name="checkmark-circle" size={20} color="#1DA1F2" style={styles.verifiedIcon} />
@@ -349,10 +365,11 @@ const ProfileScreen = ({ navigation }) => {
             {isEditingBio ? (
               <View style={styles.bioEditContainer}>
                 <TextInput
-                  style={styles.bioInput}
+                  style={[styles.bioInput, { color: theme.colors.text, backgroundColor: theme.colors.background, borderColor: theme.colors.border }]}
                   value={editedBio}
                   onChangeText={setEditedBio}
                   placeholder="Tell us about yourself..."
+                  placeholderTextColor={theme.colors.placeholder}
                   multiline
                   maxLength={200}
                   textAlignVertical="top"
@@ -379,7 +396,7 @@ const ProfileScreen = ({ navigation }) => {
                 activeOpacity={0.8}
                 style={styles.bioContainer}
               >
-                <Text style={styles.bioText}>
+                <Text style={[styles.bioText, { color: theme.colors.textSecondary }]}>
                   {profileData.bio || 'Long press to add your bio...'}
                 </Text>
               </TouchableOpacity>
@@ -388,11 +405,11 @@ const ProfileScreen = ({ navigation }) => {
         </View>
 
         {/* Settings Section */}
-        <View style={styles.settingsSection}>
-          <TouchableOpacity style={styles.settingItem} onPress={handleLogout}>
+        <View style={[styles.settingsSection, { backgroundColor: theme.colors.surface }]}>
+          <TouchableOpacity style={[styles.settingItem, { borderBottomColor: theme.colors.border }]} onPress={handleLogout}>
             <Ionicons name="log-out" size={24} color="#FF3B30" />
             <Text style={[styles.settingText, { color: '#FF3B30' }]}>Logout</Text>
-            <Ionicons name="chevron-forward" size={20} color="#999" />
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.textTertiary} />
           </TouchableOpacity>
         </View>
       </ScrollView>

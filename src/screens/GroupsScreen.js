@@ -13,6 +13,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { groupService } from '../services/database';
 import AppHeader from '../components/AppHeader';
 
@@ -21,6 +22,7 @@ const cardWidth = (width - 60) / 2; // 2 cards per row with margins
 
 const GroupsScreen = ({ navigation }) => {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -228,11 +230,11 @@ const GroupsScreen = ({ navigation }) => {
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Ionicons name="people-outline" size={80} color="#ccc" />
-      <Text style={styles.emptyTitle}>
+      <Ionicons name="people-outline" size={80} color={theme.colors.textTertiary} />
+      <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>
         No Groups Joined
       </Text>
-      <Text style={styles.emptySubtitle}>
+      <Text style={[styles.emptySubtitle, { color: theme.colors.textSecondary }]}>
         Join a group to see it here
       </Text>
       <TouchableOpacity style={styles.createButton} onPress={() => navigation.navigate('JoinGroup')}>
@@ -272,35 +274,35 @@ const GroupsScreen = ({ navigation }) => {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
       <AppHeader 
         navigation={navigation}
         title="Scout"
         rightIcon="menu"
         onRightPress={() => navigation.navigate('Settings')}
-        backgroundColor="#fff"
-        textColor="#000"
+        backgroundColor={theme.colors.background}
+        textColor={theme.colors.text}
       />
 
       {/* Action Buttons */}
       <View style={styles.actionButtons}>
-        <TouchableOpacity style={styles.actionButton} onPress={handleCreateGroup}>
+        <TouchableOpacity style={[styles.actionButton, { backgroundColor: theme.colors.surface }]} onPress={handleCreateGroup}>
           <Ionicons name="add-circle" size={18} color="#667eea" />
-          <Text style={styles.actionButtonText}>Create Group</Text>
+          <Text style={[styles.actionButtonText, { color: theme.colors.textSecondary }]}>Create Group</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={handleCreateTeam}>
+        <TouchableOpacity style={[styles.actionButton, { backgroundColor: theme.colors.surface }]} onPress={handleCreateTeam}>
           <Ionicons name="trophy" size={18} color="#667eea" />
-          <Text style={styles.actionButtonText}>Create Team</Text>
+          <Text style={[styles.actionButtonText, { color: theme.colors.textSecondary }]}>Create Team</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
-          style={styles.actionButton} 
+          style={[styles.actionButton, { backgroundColor: theme.colors.surface }]} 
           onPress={() => navigation.navigate('JoinByInvite')}
         >
           <Ionicons name="people" size={18} color="#667eea" />
-          <Text style={styles.actionButtonText}>Join by Code</Text>
+          <Text style={[styles.actionButtonText, { color: theme.colors.textSecondary }]}>Join by Code</Text>
         </TouchableOpacity>
       </View>
 

@@ -8,6 +8,7 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
@@ -18,9 +19,11 @@ const REACTIONS = [
   { emoji: '😮', name: 'wow', color: '#5856D6' },
   { emoji: '😢', name: 'sad', color: '#34C759' },
   { emoji: '😡', name: 'angry', color: '#FF2D92' },
+  { emoji: '🎉', name: 'celebrate', color: '#FFD700' },
 ];
 
 const ReactionsModal = ({ visible, onClose, onReaction, position }) => {
+  const { theme } = useTheme();
   const scaleAnim = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
@@ -41,7 +44,7 @@ const ReactionsModal = ({ visible, onClose, onReaction, position }) => {
   }, [visible]);
 
   const handleReaction = (reaction) => {
-    onReaction(reaction);
+    onReaction(reaction.name);
     onClose();
   };
 
@@ -63,9 +66,10 @@ const ReactionsModal = ({ visible, onClose, onReaction, position }) => {
           style={[
             styles.reactionsContainer,
             {
+              backgroundColor: theme.mode === 'dark' ? '#2c2c2e' : theme.colors.surface,
               transform: [{ scale: scaleAnim }],
               top: position?.y - 80 || 100,
-              left: Math.max(10, Math.min(position?.x - 150 || 50, width - 310)),
+              left: Math.max(10, Math.min(position?.x - 50 || 50, width - 310)),
             }
           ]}
         >
@@ -73,7 +77,7 @@ const ReactionsModal = ({ visible, onClose, onReaction, position }) => {
             {REACTIONS.map((reaction) => (
               <TouchableOpacity
                 key={reaction.name}
-                style={styles.reactionButton}
+                style={[styles.reactionButton, { backgroundColor: theme.mode === 'dark' ? '#1c1c1e' : theme.colors.background }]}
                 onPress={() => handleReaction(reaction)}
                 activeOpacity={0.7}
               >
@@ -81,7 +85,7 @@ const ReactionsModal = ({ visible, onClose, onReaction, position }) => {
               </TouchableOpacity>
             ))}
           </View>
-          <View style={styles.arrow} />
+          <View style={[styles.arrow, { left: 50, borderTopColor: theme.mode === 'dark' ? '#2c2c2e' : theme.colors.surface }]} />
         </Animated.View>
       </TouchableOpacity>
     </Modal>
@@ -125,8 +129,6 @@ const styles = StyleSheet.create({
   arrow: {
     position: 'absolute',
     bottom: -8,
-    left: '50%',
-    marginLeft: -8,
     width: 0,
     height: 0,
     borderLeftWidth: 8,

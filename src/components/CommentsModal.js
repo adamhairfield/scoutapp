@@ -14,9 +14,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { feedService } from '../services/database';
+import { useTheme } from '../contexts/ThemeContext';
 import Avatar from './Avatar';
 
 const CommentsModal = ({ visible, onClose, post, user }) => {
+  const { theme } = useTheme();
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -84,17 +86,17 @@ const CommentsModal = ({ visible, onClose, post, user }) => {
         style={styles.commentAvatar}
       />
       <View style={styles.commentContent}>
-        <View style={styles.commentBubble}>
-          <Text style={styles.commentAuthor}>{comment.profiles?.name}</Text>
-          <Text style={styles.commentText}>{comment.content}</Text>
+        <View style={[styles.commentBubble, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.commentAuthor, { color: theme.colors.text }]}>{comment.profiles?.name}</Text>
+          <Text style={[styles.commentText, { color: theme.colors.text }]}>{comment.content}</Text>
         </View>
-        <Text style={styles.commentTime}>{formatTimestamp(comment.created_at)}</Text>
+        <Text style={[styles.commentTime, { color: theme.colors.textTertiary }]}>{formatTimestamp(comment.created_at)}</Text>
       </View>
     </View>
   );
 
   const renderHeader = () => (
-    <View style={styles.postHeader}>
+    <View style={[styles.postHeader, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
       <Avatar
         imageUrl={post?.author_profile_picture_url}
         name={post?.author_name}
@@ -102,8 +104,8 @@ const CommentsModal = ({ visible, onClose, post, user }) => {
         style={styles.postAuthorAvatar}
       />
       <View style={styles.postAuthorInfo}>
-        <Text style={styles.postAuthorName}>{post?.author_name}</Text>
-        <Text style={styles.postTime}>{post?.timestamp}</Text>
+        <Text style={[styles.postAuthorName, { color: theme.colors.text }]}>{post?.author_name}</Text>
+        <Text style={[styles.postTime, { color: theme.colors.textSecondary }]}>{post?.timestamp}</Text>
       </View>
     </View>
   );
@@ -115,20 +117,20 @@ const CommentsModal = ({ visible, onClose, post, user }) => {
       presentationStyle="fullScreen"
       onRequestClose={onClose}
     >
-      <SafeAreaView style={styles.container} edges={['bottom']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={24} color="#333" />
+            <Ionicons name="close" size={24} color={theme.colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Comments</Text>
+          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Comments</Text>
           <View style={styles.placeholder} />
         </View>
 
         {/* Post Content */}
-        <View style={styles.postContainer}>
+        <View style={[styles.postContainer, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
           {renderHeader()}
-          <Text style={styles.postContent}>{post?.content}</Text>
+          <Text style={[styles.postContent, { color: theme.colors.text }]}>{post?.content}</Text>
         </View>
 
         <KeyboardAvoidingView 
@@ -146,7 +148,7 @@ const CommentsModal = ({ visible, onClose, post, user }) => {
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
               <View style={styles.emptyComments}>
-                <Text style={styles.emptyCommentsText}>
+                <Text style={[styles.emptyCommentsText, { color: theme.colors.textSecondary }]}>
                   {loading ? 'Loading comments...' : 'No comments yet. Be the first to comment!'}
                 </Text>
               </View>
@@ -154,7 +156,7 @@ const CommentsModal = ({ visible, onClose, post, user }) => {
           />
 
           {/* Comment Input */}
-          <View style={styles.inputContainer}>
+          <View style={[styles.inputContainer, { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.border }]}>
             <Avatar
               imageUrl={user?.profile_picture_url}
               name={user?.name}
@@ -162,9 +164,9 @@ const CommentsModal = ({ visible, onClose, post, user }) => {
               style={styles.userAvatar}
             />
             <TextInput
-              style={styles.commentInput}
+              style={[styles.commentInput, { backgroundColor: theme.colors.background, color: theme.colors.text, borderColor: theme.colors.border }]}
               placeholder="Add a comment..."
-              placeholderTextColor="#999"
+              placeholderTextColor={theme.colors.placeholder}
               value={commentText}
               onChangeText={setCommentText}
               multiline

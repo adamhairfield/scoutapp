@@ -11,10 +11,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import AppHeader from '../components/AppHeader';
 
 const HomeScreen = ({ navigation }) => {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const [posts, setPosts] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -89,24 +91,24 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const PostCard = ({ post }) => (
-    <View style={styles.postCard}>
+    <View style={[styles.postCard, { backgroundColor: theme.colors.surface }]}>
       <View style={styles.postHeader}>
         <View style={[styles.postIcon, { backgroundColor: getPostColor(post.type) + '20' }]}>
           <Ionicons name={getPostIcon(post.type)} size={20} color={getPostColor(post.type)} />
         </View>
         <View style={styles.postInfo}>
-          <Text style={styles.postTitle}>{post.title}</Text>
-          <Text style={styles.postMeta}>{post.author} • {post.groupName}</Text>
+          <Text style={[styles.postTitle, { color: theme.colors.text }]}>{post.title}</Text>
+          <Text style={[styles.postMeta, { color: theme.colors.textSecondary }]}>{post.author} • {post.groupName}</Text>
         </View>
-        <Text style={styles.postTime}>{post.timestamp}</Text>
+        <Text style={[styles.postTime, { color: theme.colors.textTertiary }]}>{post.timestamp}</Text>
       </View>
-      <Text style={styles.postContent}>{post.content}</Text>
+      <Text style={[styles.postContent, { color: theme.colors.text }]}>{post.content}</Text>
     </View>
   );
 
   const QuickActions = () => (
     <View style={styles.quickActions}>
-      <Text style={styles.sectionTitle}>Quick Actions</Text>
+      <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Quick Actions</Text>
       <View style={styles.actionButtons}>
         {user.role === 'coach' && (
           <>
@@ -149,15 +151,15 @@ const HomeScreen = ({ navigation }) => {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
       <AppHeader 
         navigation={navigation}
         title="Scout"
         rightIcon="menu"
         onRightPress={() => navigation.navigate('Settings')}
-        backgroundColor="#f8f9fa"
-        textColor="#333"
+        backgroundColor={theme.colors.background}
+        textColor={theme.colors.text}
       />
 
       <ScrollView 
@@ -170,7 +172,7 @@ const HomeScreen = ({ navigation }) => {
         <QuickActions />
 
         <View style={styles.feedSection}>
-          <Text style={styles.sectionTitle}>Group Feed</Text>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Group Feed</Text>
           {posts.map((post) => (
             <PostCard key={post.id} post={post} />
           ))}

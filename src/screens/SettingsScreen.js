@@ -6,16 +6,27 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
 
 const SettingsScreen = ({ navigation }) => {
+  const { theme, isDarkMode, toggleTheme } = useTheme();
+  
   const handleSettingPress = (settingName) => {
     Alert.alert(settingName, `${settingName} functionality will be implemented soon!`);
   };
 
   const settingsItems = [
+    {
+      icon: isDarkMode ? 'moon' : 'sunny',
+      title: 'Dark Mode',
+      type: 'toggle',
+      value: isDarkMode,
+      onToggle: toggleTheme
+    },
     {
       icon: 'swap-horizontal-outline',
       title: 'Import from SportsEngine',
@@ -84,40 +95,67 @@ const SettingsScreen = ({ navigation }) => {
     }
   ];
 
-  const renderSettingItem = (item, index) => (
-    <TouchableOpacity
-      key={index}
-      style={[
-        styles.settingItem,
-        item.isLast && styles.lastSettingItem
-      ]}
-      onPress={item.onPress}
-    >
-      <View style={styles.settingLeft}>
-        <Ionicons name={item.icon} size={24} color="#333" />
-        <Text style={styles.settingTitle}>{item.title}</Text>
-      </View>
-      <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
-    </TouchableOpacity>
-  );
+  const renderSettingItem = (item, index) => {
+    if (item.type === 'toggle') {
+      return (
+        <View
+          key={index}
+          style={[
+            styles.settingItem,
+            { borderBottomColor: theme.colors.border },
+            item.isLast && styles.lastSettingItem
+          ]}
+        >
+          <View style={styles.settingLeft}>
+            <Ionicons name={item.icon} size={24} color={theme.colors.text} />
+            <Text style={[styles.settingTitle, { color: theme.colors.text }]}>{item.title}</Text>
+          </View>
+          <Switch
+            value={item.value}
+            onValueChange={item.onToggle}
+            trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+            thumbColor={item.value ? '#fff' : '#f4f3f4'}
+          />
+        </View>
+      );
+    }
+
+    return (
+      <TouchableOpacity
+        key={index}
+        style={[
+          styles.settingItem,
+          { borderBottomColor: theme.colors.border },
+          item.isLast && styles.lastSettingItem
+        ]}
+        onPress={item.onPress}
+      >
+        <View style={styles.settingLeft}>
+          <Ionicons name={item.icon} size={24} color={theme.colors.text} />
+          <Text style={[styles.settingTitle, { color: theme.colors.text }]}>{item.title}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+      </TouchableOpacity>
+    );
+  };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="chevron-back" size={24} color="#333" />
+          <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>App Settings</Text>
+        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>App Settings</Text>
         <View style={styles.headerSpacer} />
       </View>
 
       {/* Settings List */}
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.settingsContainer}>
+        <View style={[styles.settingsContainer, { backgroundColor: theme.colors.surface }]}>
           {settingsItems.map((item, index) => renderSettingItem(item, index))}
         </View>
       </ScrollView>

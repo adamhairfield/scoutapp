@@ -64,6 +64,20 @@ export const groupService = {
         index === self.findIndex(g => g.id === group.id)
       );
 
+      // Build a lookup of leader profiles for all groups we fetched
+      const leaderIds = [...new Set(uniqueGroups.map((group) => group.leader_id).filter(Boolean))];
+      let leaderProfileMap = new Map();
+      if (leaderIds.length > 0) {
+        const { data: leaderProfiles, error: leaderProfilesError } = await supabase
+          .from('profiles')
+          .select('id, name, email, profile_picture_url')
+          .in('id', leaderIds);
+
+        if (leaderProfilesError) throw leaderProfilesError;
+
+        leaderProfileMap = new Map(leaderProfiles.map((profile) => [profile.id, profile]));
+      }
+
       // Get member counts and pin status for each group
       const groupsWithCount = await Promise.all(
         uniqueGroups.map(async (group) => {
@@ -83,6 +97,7 @@ export const groupService = {
 
           return {
             ...group,
+            leader_profile: leaderProfileMap.get(group.leader_id) || null,
             member_count: (memberCount || 0) + 1, // +1 for the leader
             user_role: leaderGroups?.some(lg => lg.id === group.id) ? 'leader' : 'member',
             is_pinned: !!pinData
@@ -190,7 +205,8 @@ export const groupService = {
             id,
             name,
             email,
-            role
+            role,
+            profile_picture_url
           )
         `)
         .eq('group_id', groupId);
@@ -228,19 +244,30 @@ export const groupService = {
     try {
       const { data, error } = await supabase
         .from('groups')
-        .select(`
-          *,
-          profiles!groups_leader_id_fkey (
-            id,
-            name,
-            email
-          )
-        `)
+        .select('*')
         .eq('join_code', joinCode.toUpperCase())
         .single();
 
       if (error) throw error;
-      return data;
+      if (!data) return null;
+
+      // Fetch leader profile information
+      let leaderProfile = null;
+      if (data.leader_id) {
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, name, email, profile_picture_url')
+          .eq('id', data.leader_id)
+          .single();
+
+        if (profileError && profileError.code !== 'PGRST116') throw profileError;
+        leaderProfile = profileData || null;
+      }
+
+      return {
+        ...data,
+        leader_profile: leaderProfile,
+      };
     } catch (error) {
       console.error('Error finding group by join code:', error);
       return null;
@@ -1048,7 +1075,7 @@ export const feedService = {
           profile_picture_url: post.author_profile_picture_url
         },
         content: post.content,
-        timestamp: this.formatTimestamp(post.created_at),
+        created_at: post.created_at,
         likes: post.total_reactions || post.like_count,
         comments: post.recent_comments || [],
         commentCount: post.comment_count,
@@ -1403,12 +1430,12 @@ export const feedService = {
         .select(`
           *,
           profiles (
+            id,
             name,
             profile_picture_url
           )
         `)
-        .eq('post_id', postId)
-        .order('created_at', { ascending: false });
+        .eq('post_id', postId);
 
       if (error) throw error;
       return { success: true, data: data || [] };
@@ -1416,5 +1443,15 @@ export const feedService = {
       console.error('Error getting post reactions:', error);
       return { success: false, error: error.message };
     }
+  },
+
+  // Alias for reactToPost for backward compatibility
+  async addReaction(postId, userId, reactionType) {
+    return this.reactToPost(postId, userId, reactionType);
+  },
+
+  // Alias for togglePostLike for backward compatibility
+  async toggleLike(postId, userId) {
+    return this.togglePostLike(postId, userId);
   }
 };

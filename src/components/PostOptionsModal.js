@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 import BottomDrawer from './BottomDrawer';
 import DrawerOption from './DrawerOption';
 
@@ -17,8 +18,9 @@ const PostOptionsModal = ({
   onEditPost, 
   onReportPost,
   onPinPost,
-  isGroupLeader = false
+  isGroupHost = false
 }) => {
+  const { theme } = useTheme();
   const isPostAuthor = post?.author?.id === currentUser?.id;
 
   const handleDeletePost = () => {
@@ -102,27 +104,29 @@ const PostOptionsModal = ({
       visible={visible}
       onClose={onClose}
       title="Post Options"
+      theme={theme}
     >
       {/* Post Preview */}
-      <View style={styles.postPreview}>
-        <Text style={styles.postContent} numberOfLines={2}>
+      <View style={[styles.postPreview, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
+        <Text style={[styles.postContent, { color: theme.colors.text }]} numberOfLines={2}>
           {post.content}
         </Text>
-        <Text style={styles.postAuthor}>
+        <Text style={[styles.postAuthor, { color: theme.colors.textSecondary }]}>
           by {post.author?.name} • {post.timestamp}
         </Text>
       </View>
 
       {/* Options */}
       <View style={styles.optionsContainer}>
-        {/* Pin option for group leaders */}
-        {isGroupLeader && (
+        {/* Pin option for group hosts */}
+        {isGroupHost && (
           <DrawerOption
             icon={post?.pinned ? "pin" : "pin-outline"}
             iconColor={post?.pinned ? "#FF6B6B" : "#667eea"}
             title={post?.pinned ? "Unpin Post" : "Pin to Top"}
             titleColor={post?.pinned ? "#FF6B6B" : undefined}
             onPress={handlePinPost}
+            theme={theme}
           />
         )}
 
@@ -133,6 +137,7 @@ const PostOptionsModal = ({
               iconColor="#667eea"
               title="Edit Post"
               onPress={handleEditPost}
+              theme={theme}
             />
 
             <DrawerOption
@@ -140,6 +145,7 @@ const PostOptionsModal = ({
               title="Delete Post"
               onPress={handleDeletePost}
               destructive={true}
+              theme={theme}
             />
           </>
         )}
@@ -151,6 +157,7 @@ const PostOptionsModal = ({
             title="Report Post"
             titleColor="#FF9500"
             onPress={handleReportPost}
+            theme={theme}
           />
         )}
 
@@ -158,6 +165,7 @@ const PostOptionsModal = ({
           icon="link-outline"
           title="Copy Link"
           onPress={handleCopyLink}
+          theme={theme}
         />
       </View>
     </BottomDrawer>

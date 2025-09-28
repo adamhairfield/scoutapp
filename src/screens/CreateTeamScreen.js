@@ -13,10 +13,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { teamService } from '../services/database';
 
 const CreateTeamScreen = ({ navigation }) => {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const [teamName, setTeamName] = useState('');
   const [sport, setSport] = useState('');
   const [ageGroup, setAgeGroup] = useState('');
@@ -103,19 +105,20 @@ const CreateTeamScreen = ({ navigation }) => {
     <TouchableOpacity
       style={[
         styles.subscriptionCard,
+        { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
         isSelected && { borderColor: plan.color, borderWidth: 2 },
       ]}
       onPress={onSelect}
     >
       <View style={styles.subscriptionHeader}>
         <Text style={[styles.planName, { color: plan.color }]}>{plan.name}</Text>
-        <Text style={styles.planPrice}>{plan.price}</Text>
+        <Text style={[styles.planPrice, { color: theme.colors.text }]}>{plan.price}</Text>
       </View>
       <View style={styles.featuresContainer}>
         {plan.features.map((feature, index) => (
           <View key={index} style={styles.featureRow}>
             <Ionicons name="checkmark-circle" size={16} color={plan.color} />
-            <Text style={styles.featureText}>{feature}</Text>
+            <Text style={[styles.featureText, { color: theme.colors.textSecondary }]}>{feature}</Text>
           </View>
         ))}
       </View>
@@ -128,36 +131,36 @@ const CreateTeamScreen = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
       <KeyboardAvoidingView
         style={styles.keyboardContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          <View style={styles.header}>
+          <View style={[styles.header, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
             <TouchableOpacity
               style={styles.backButton}
               onPress={() => navigation.goBack()}
             >
-              <Ionicons name="arrow-back" size={24} color="#333" />
+              <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
             </TouchableOpacity>
-            <Text style={styles.title}>Create Team</Text>
+            <Text style={[styles.title, { color: theme.colors.text }]}>Create Team</Text>
           </View>
 
-        <View style={styles.form}>
+        <View style={[styles.form, { backgroundColor: theme.colors.background }]}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Team Name *</Text>
+            <Text style={[styles.label, { color: theme.colors.text }]}>Team Name *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text, borderColor: theme.colors.border }]}
               value={teamName}
               onChangeText={setTeamName}
               placeholder="Enter team name"
-              placeholderTextColor="#999"
+              placeholderTextColor={theme.colors.placeholder}
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Sport *</Text>
+            <Text style={[styles.label, { color: theme.colors.text }]}>Sport *</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.chipContainer}>
                 {sports.map((sportOption) => (
@@ -165,6 +168,7 @@ const CreateTeamScreen = ({ navigation }) => {
                     key={sportOption}
                     style={[
                       styles.chip,
+                      { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
                       sport === sportOption && styles.chipSelected,
                     ]}
                     onPress={() => setSport(sportOption)}
@@ -172,6 +176,7 @@ const CreateTeamScreen = ({ navigation }) => {
                     <Text
                       style={[
                         styles.chipText,
+                        { color: theme.colors.textSecondary },
                         sport === sportOption && styles.chipTextSelected,
                       ]}
                     >

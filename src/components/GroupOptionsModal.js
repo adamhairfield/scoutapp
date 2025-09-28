@@ -10,9 +10,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
 import { groupService } from '../services/database';
 
 const GroupOptionsModal = ({ visible, onClose, group, user, navigation }) => {
+  const { theme } = useTheme();
   const isLeader = group.leader_id === user.id;
 
   const handleInviteFriends = () => {
@@ -288,23 +290,24 @@ const GroupOptionsModal = ({ visible, onClose, group, user, navigation }) => {
   const renderMenuItem = (item, index) => (
     <TouchableOpacity
       key={index}
-      style={styles.menuItem}
+      style={[styles.menuItem, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}
       onPress={item.onPress}
     >
       <View style={styles.menuItemLeft}>
         <Ionicons 
           name={item.icon} 
           size={24} 
-          color={item.destructive ? '#FF3B30' : '#333'} 
+          color={item.destructive ? '#FF3B30' : theme.colors.text} 
         />
         <Text style={[
           styles.menuItemText,
+          { color: theme.colors.text },
           item.destructive && styles.destructiveText
         ]}>
           {item.title}
         </Text>
       </View>
-      <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+      <Ionicons name="chevron-forward" size={20} color={theme.colors.textTertiary} />
     </TouchableOpacity>
   );
 
@@ -314,13 +317,13 @@ const GroupOptionsModal = ({ visible, onClose, group, user, navigation }) => {
       animationType="slide"
       presentationStyle="pageSheet"
     >
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
           <TouchableOpacity style={styles.backButton} onPress={onClose}>
-            <Ionicons name="chevron-back" size={24} color="#333" />
+            <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>More Options</Text>
+          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>More Options</Text>
           <View style={styles.headerSpacer} />
         </View>
 
@@ -365,9 +368,6 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-  },
-  menuContainer: {
-    paddingTop: 20,
   },
   menuItem: {
     flexDirection: 'row',

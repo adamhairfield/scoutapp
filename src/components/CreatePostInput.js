@@ -12,8 +12,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Avatar from './Avatar';
 import { photoUploadService } from '../services/PhotoUploadService';
+import { useTheme } from '../contexts/ThemeContext';
 
 const CreatePostInput = memo(({ user, onCreatePost, groupId }) => {
+  const { theme } = useTheme();
   const [postText, setPostText] = useState('');
   const [selectedPhotos, setSelectedPhotos] = useState([]);
   const [selectedVideo, setSelectedVideo] = useState(null);
@@ -196,7 +198,7 @@ const CreatePostInput = memo(({ user, onCreatePost, groupId }) => {
   };
 
   return (
-    <View style={styles.createPostContainer}>
+    <View style={[styles.createPostContainer, { backgroundColor: theme.colors.surface }]}>
       <View style={styles.createPostHeader}>
         <Avatar
           imageUrl={user.profile_picture_url}
@@ -204,9 +206,9 @@ const CreatePostInput = memo(({ user, onCreatePost, groupId }) => {
           size={40}
         />
         <TextInput
-          style={styles.postInput}
+          style={[styles.postInput, { color: theme.colors.text }]}
           placeholder="Say something..."
-          placeholderTextColor="#999"
+          placeholderTextColor={theme.colors.placeholder}
           value={postText}
           onChangeText={setPostText}
           multiline
@@ -262,14 +264,14 @@ const CreatePostInput = memo(({ user, onCreatePost, groupId }) => {
         </View>
       )}
       
-      <View style={styles.createPostActions}>
+      <View style={[styles.createPostActions, { borderTopColor: theme.colors.border }]}>
         <TouchableOpacity 
           style={styles.actionButton} 
           onPress={showPhotoOptions}
           disabled={isUploading}
         >
           <Ionicons name="camera" size={20} color="#4CAF50" />
-          <Text style={styles.actionText}>Photo</Text>
+          <Text style={[styles.actionText, { color: theme.colors.textSecondary }]}>Photo</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -278,12 +280,12 @@ const CreatePostInput = memo(({ user, onCreatePost, groupId }) => {
           disabled={isUploading}
         >
           <Ionicons name="videocam" size={20} color="#2196F3" />
-          <Text style={styles.actionText}>Video</Text>
+          <Text style={[styles.actionText, { color: theme.colors.textSecondary }]}>Video</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.actionButton}>
           <Ionicons name="link" size={20} color="#FF9800" />
-          <Text style={styles.actionText}>Link</Text>
+          <Text style={[styles.actionText, { color: theme.colors.textSecondary }]}>Link</Text>
         </TouchableOpacity>
         
         {(postText.trim() || selectedPhotos.length > 0 || selectedVideo) && (

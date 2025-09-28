@@ -5,33 +5,40 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
 
 const DrawerOption = ({ 
   icon, 
-  iconColor = '#666', 
+  iconColor, 
   title, 
-  titleColor = '#333',
+  titleColor,
   onPress,
   disabled = false,
   destructive = false,
-  style = {}
+  style = {},
+  theme: propTheme
 }) => {
+  const contextTheme = useTheme();
+  const theme = propTheme || contextTheme.theme;
   const getColors = () => {
     if (disabled) {
       return {
-        iconColor: '#ccc',
-        titleColor: '#ccc',
+        iconColor: theme.colors.textTertiary,
+        titleColor: theme.colors.textTertiary,
       };
     }
     
     if (destructive) {
       return {
-        iconColor: iconColor === '#666' ? '#FF3B30' : iconColor,
-        titleColor: titleColor === '#333' ? '#FF3B30' : titleColor,
+        iconColor: iconColor || '#FF3B30',
+        titleColor: titleColor || '#FF3B30',
       };
     }
 
-    return { iconColor, titleColor };
+    return { 
+      iconColor: iconColor || theme.colors.text, 
+      titleColor: titleColor || theme.colors.text 
+    };
   };
 
   const colors = getColors();
@@ -47,7 +54,7 @@ const DrawerOption = ({
       <Text style={[styles.title, { color: colors.titleColor }]}>
         {title}
       </Text>
-      <Ionicons name="chevron-forward" size={16} color="#ccc" />
+      <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} />
     </TouchableOpacity>
   );
 };

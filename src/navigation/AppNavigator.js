@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
+import { useTheme } from '../contexts/ThemeContext';
 import LoginScreen from '../screens/LoginScreen';
 import CreateGroupScreen from '../screens/CreateGroupScreen';
 import GroupsScreen from '../screens/GroupsScreen';
@@ -32,6 +33,7 @@ const Tab = createBottomTabNavigator();
 const MainTabs = () => {
   const { user } = useAuth();
   const { unreadCount } = useNotifications();
+  const { theme } = useTheme();
 
   // Add null check for user
   if (!user) {
@@ -59,13 +61,13 @@ const MainTabs = () => {
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarBadge: route.name === 'Notifications' && unreadCount > 0 ? unreadCount : undefined,
-        tabBarActiveTintColor: '#667eea',
-        tabBarInactiveTintColor: 'gray',
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.textSecondary,
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#fff',
+          backgroundColor: theme.colors.surface,
           borderTopWidth: 1,
-          borderTopColor: '#e9ecef',
+          borderTopColor: theme.colors.border,
           paddingBottom: 25,
           paddingTop: 8,
           height: 85,

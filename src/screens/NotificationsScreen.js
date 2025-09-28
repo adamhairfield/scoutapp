@@ -12,12 +12,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { supabase } from '../config/supabase';
 import AppHeader from '../components/AppHeader';
 
 const NotificationsScreen = ({ navigation }) => {
   const { user } = useAuth();
   const { unreadCount, markAsRead, markAllAsRead, refreshUnreadCount } = useNotifications();
+  const { theme } = useTheme();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -192,6 +194,7 @@ const NotificationsScreen = ({ navigation }) => {
     <TouchableOpacity
       style={[
         styles.notificationItem,
+        { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border },
         !item.read && styles.unreadNotification
       ]}
       onPress={() => handleNotificationPress(item)}
@@ -211,14 +214,15 @@ const NotificationsScreen = ({ navigation }) => {
         <View style={styles.textContainer}>
           <Text style={[
             styles.notificationTitle,
+            { color: theme.colors.text },
             !item.read && styles.unreadText
           ]}>
             {item.title}
           </Text>
-          <Text style={styles.notificationBody} numberOfLines={2}>
+          <Text style={[styles.notificationBody, { color: theme.colors.textSecondary }]} numberOfLines={2}>
             {item.body}
           </Text>
-          <Text style={styles.notificationTime}>
+          <Text style={[styles.notificationTime, { color: theme.colors.textTertiary }]}>
             {formatTime(item.sent_at)}
           </Text>
         </View>
@@ -230,19 +234,19 @@ const NotificationsScreen = ({ navigation }) => {
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Ionicons name="notifications-outline" size={64} color="#ccc" />
-      <Text style={styles.emptyTitle}>No Notifications</Text>
-      <Text style={styles.emptySubtitle}>
+      <Ionicons name="notifications-outline" size={64} color={theme.colors.textTertiary} />
+      <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>No Notifications</Text>
+      <Text style={[styles.emptySubtitle, { color: theme.colors.textSecondary }]}>
         You'll see notifications for messages, friend requests, and team invites here.
       </Text>
     </View>
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Notifications</Text>
+        <View style={[styles.header, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
+          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Notifications</Text>
           {unreadCount > 0 && (
             <TouchableOpacity 
               style={styles.markAllButton}
