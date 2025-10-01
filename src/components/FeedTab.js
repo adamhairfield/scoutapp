@@ -186,12 +186,27 @@ const FeedTab = ({
     </View>
   );
 
+  const renderEmptyState = () => (
+    <View style={styles.emptyStateContainer}>
+      <View style={[styles.emptyStateIcon, { backgroundColor: theme?.colors.surface || '#f8f9fa' }]}>
+        <Ionicons name="chatbubbles-outline" size={48} color={theme?.colors.textTertiary || '#ccc'} />
+      </View>
+      <Text style={[styles.emptyStateTitle, { color: theme?.colors.text || '#333' }]}>
+        No posts yet
+      </Text>
+      <Text style={[styles.emptyStateSubtitle, { color: theme?.colors.textSecondary || '#666' }]}>
+        Be the first to share something with your {group.group_type === 'team' ? 'team' : 'group'}!
+      </Text>
+    </View>
+  );
+
   return (
     <FlatList
       data={posts}
       renderItem={renderPost}
       keyExtractor={(item) => item.id}
       ListHeaderComponent={() => <CreatePostInput user={user} onCreatePost={onCreatePost} groupId={group.id} />}
+      ListEmptyComponent={renderEmptyState}
       contentContainerStyle={styles.feedContainer}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />

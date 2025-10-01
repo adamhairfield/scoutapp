@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 const AppHeader = ({ 
   navigation, 
-  title = "Scout", 
+  title = "Scout.", 
   rightIcon = "menu",
   onRightPress,
   backgroundColor = "transparent",
@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 30,
     fontWeight: 'bold',
     fontStyle: 'italic',
     textAlign: 'left',

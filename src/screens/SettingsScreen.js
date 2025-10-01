@@ -68,6 +68,11 @@ const SettingsScreen = ({ navigation }) => {
       onPress: () => handleSettingPress('Edit Profile')
     },
     {
+      icon: 'camera-outline',
+      title: 'Change Profile Picture',
+      onPress: () => navigation.navigate('ProfilePictureEditor')
+    },
+    {
       icon: 'time-outline',
       title: 'Pending Posts',
       onPress: () => handleSettingPress('Pending Posts')

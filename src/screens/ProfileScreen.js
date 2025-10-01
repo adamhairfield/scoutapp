@@ -1,15 +1,16 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   ScrollView,
-  Dimensions,
+  TouchableOpacity,
   Alert,
-  TextInput,
   StatusBar,
   Platform,
+  Dimensions,
+  TextInput,
+  RefreshControl
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,7 +24,8 @@ import { profileService } from '../services/profileService';
 import { friendsService } from '../services/friendsService';
 import { groupService } from '../services/database';
 
-const { width } = Dimensions.get('window');
+const { width, height: screenHeight } = Dimensions.get('window');
+const { height: windowHeight } = Dimensions.get('screen');
 
 const ProfileScreen = ({ navigation }) => {
   const { user, logout, refreshUserProfile } = useAuth();
@@ -31,20 +33,19 @@ const ProfileScreen = ({ navigation }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(user.name || 'Adam Hairfield');
-  const [profilePictureUrl, setProfilePictureUrl] = useState(user.profile_picture_url || null);
   const [friendsCount, setFriendsCount] = useState(0);
   const [groupsCount, setGroupsCount] = useState(0);
   const [isEditingBio, setIsEditingBio] = useState(false);
   const [editedBio, setEditedBio] = useState('');
+  const [profilePictureUrl, setProfilePictureUrl] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [profileData, setProfileData] = useState({
-    name: user.name || 'Adam Hairfield',
-    bio: '',
-    coverPhoto: null,
-    groups: '0',
-    isPublic: true,
+    name: user?.name || 'Your Name',
+    subtitle: 'Wide Receiver - University of Scout',
+    bio: 'Loading...',
+    coverPhoto: 'https://images.unsplash.com/photo-1544723795-3fb6469f5b39?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80'
   });
 
-  // Update status bar when screen is focused or theme changes
   useFocusEffect(
     useCallback(() => {
       StatusBar.setBarStyle(theme.mode === 'dark' ? 'light-content' : 'dark-content', true);
@@ -53,6 +54,23 @@ const ProfileScreen = ({ navigation }) => {
       }
     }, [theme.mode, theme.colors.background])
   );
+
+  // Listen for navigation events to detect return from ProfilePictureEditor
+  React.useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      // Check if we're returning from ProfilePictureEditor
+      const routes = navigation.getState()?.routes;
+      const currentRoute = routes?.[routes.length - 1];
+      const previousRoute = routes?.[routes.length - 2];
+      
+      if (previousRoute?.name === 'ProfilePictureEditor') {
+        console.log('Returned from ProfilePictureEditor, refreshing profile...');
+        refreshUserProfile();
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, refreshUserProfile]);
 
   React.useEffect(() => {
     loadUserProfile();
@@ -65,21 +83,6 @@ const ProfileScreen = ({ navigation }) => {
     console.log('isEditingName changed to:', isEditingName);
   }, [isEditingName]);
 
-  // Handle status bar when screen is focused/unfocused
-  useFocusEffect(
-    React.useCallback(() => {
-      // Set white status bar when screen is focused
-      StatusBar.setBarStyle('light-content');
-      
-      // Refresh counts when screen is focused
-      refreshCounts();
-      
-      return () => {
-        // Reset to dark status bar when screen is unfocused
-        StatusBar.setBarStyle('dark-content');
-      };
-    }, [])
-  );
 
   const loadUserProfile = async () => {
     try {
@@ -130,6 +133,22 @@ const ProfileScreen = ({ navigation }) => {
     // Refresh the user profile in AuthContext so the avatar updates throughout the app
     await refreshUserProfile();
   };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        refreshUserProfile(),
+        loadUserProfile(),
+        loadFriendsCount(),
+        loadGroupsCount()
+      ]);
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshUserProfile]);
 
   const handleNameLongPress = () => {
     console.log('Name long press detected!');
@@ -257,7 +276,18 @@ const ProfileScreen = ({ navigation }) => {
   );
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]} showsVerticalScrollIndicator={false}>
+    <ScrollView 
+      style={[styles.container, { backgroundColor: theme.colors.background }]} 
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={theme.colors.primary}
+          colors={[theme.colors.primary]}
+        />
+      }
+    >
         <StatusBar 
           barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} 
           backgroundColor={theme.colors.background}
@@ -270,7 +300,9 @@ const ProfileScreen = ({ navigation }) => {
             onImageUpdate={handleProfilePictureUpdate}
             style={styles.coverImageContainer}
             size={width}
+            coverHeight={windowHeight * 0.75}
             isCoverPhoto={true}
+            editable={false}
           />
           {/* Top gradient for header visibility */}
           <LinearGradient
@@ -287,31 +319,22 @@ const ProfileScreen = ({ navigation }) => {
           {/* Header */}
           <AppHeader 
             navigation={navigation}
-            title="Scout"
+            title="Scout."
             rightIcon="menu"
             onRightPress={() => navigation.navigate('Settings')}
           />
 
-          {/* Stats Overlay */}
-          <View style={styles.statsOverlay}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{friendsCount}</Text>
-              <Text style={styles.statLabel}>Friends</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{groupsCount}</Text>
-              <Text style={styles.statLabel}>Groups</Text>
-            </View>
+          {/* Team Info Overlay */}
+          <View style={styles.teamInfoOverlay}>
+            <Text style={styles.teamNameText}>JRHS FOOTBALL #42</Text>
           </View>
-        </View>
 
-        {/* Profile Info */}
-        <View style={[styles.profileInfo, { backgroundColor: theme.colors.surface }]}>
-          <View style={styles.nameSection}>
+          {/* Profile Name Overlay */}
+          <View style={styles.nameOverlay}>
             {isEditingName ? (
-              <View style={styles.nameEditContainer}>
+              <View style={styles.nameEditOverlayContainer}>
                 <TextInput
-                  style={[styles.nameInput, { color: theme.colors.text, backgroundColor: theme.colors.background, borderColor: theme.colors.border }]}
+                  style={[styles.nameInputOverlay, { color: '#fff', borderColor: 'rgba(255,255,255,0.5)' }]}
                   value={editedName}
                   onChangeText={(text) => {
                     console.log('Name text changed to:', text);
@@ -324,27 +347,27 @@ const ProfileScreen = ({ navigation }) => {
                     handleNameSave();
                   }}
                   placeholder="Enter your name"
-                  placeholderTextColor={theme.colors.placeholder}
+                  placeholderTextColor="rgba(255,255,255,0.7)"
                   maxLength={50}
                 />
-                <View style={styles.nameEditActions}>
+                <View style={styles.nameEditActionsOverlay}>
                   <TouchableOpacity 
-                    style={styles.nameActionButton} 
+                    style={styles.nameActionButtonOverlay} 
                     onPress={() => {
                       console.log('Cancel button pressed');
                       handleNameCancel();
                     }}
                   >
-                    <Ionicons name="close" size={16} color="#FF3B30" />
+                    <Ionicons name="close" size={20} color="#FF3B30" />
                   </TouchableOpacity>
                   <TouchableOpacity 
-                    style={styles.nameActionButton} 
+                    style={styles.nameActionButtonOverlay} 
                     onPress={() => {
                       console.log('Save button pressed');
                       handleNameSave();
                     }}
                   >
-                    <Ionicons name="checkmark" size={16} color="#34C759" />
+                    <Ionicons name="checkmark" size={20} color="#34C759" />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -353,11 +376,29 @@ const ProfileScreen = ({ navigation }) => {
                 onLongPress={handleNameLongPress}
                 delayLongPress={500}
                 activeOpacity={0.8}
+                style={styles.nameOverlayTouchable}
               >
-                <Text style={[styles.profileName, { color: theme.colors.text }]}>{profileData.name}</Text>
+                <Text style={styles.profileNameOverlay}>{profileData.name}</Text>
+                <Text style={styles.profileSubtitle}>Wide Receiver - University of Scout</Text>
               </TouchableOpacity>
             )}
-            <Ionicons name="checkmark-circle" size={20} color="#1DA1F2" style={styles.verifiedIcon} />
+          </View>
+
+        </View>
+
+        {/* Profile Info */}
+        <View style={[styles.profileInfo, { backgroundColor: theme.colors.surface }]}>
+          
+          {/* Stats Section */}
+          <View style={styles.statsSection}>
+            <View style={styles.statItem}>
+              <Text style={[styles.statNumber, { color: theme.colors.text }]}>{friendsCount}</Text>
+              <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Friends</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={[styles.statNumber, { color: theme.colors.text }]}>{groupsCount}</Text>
+              <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Groups</Text>
+            </View>
           </View>
       
           {/* Bio Section */}
@@ -425,7 +466,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   coverContainer: {
-    height: 400,
+    height: windowHeight * 0.75,
     position: 'relative',
   },
   coverImageContainer: {
@@ -709,6 +750,113 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 2,
     elevation: 2,
+  },
+  // Team Info Overlay Styles
+  teamInfoOverlay: {
+    position: 'absolute',
+    bottom: 210,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 30,
+    zIndex: 3,
+  },
+  teamNameText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+    textAlign: 'left',
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  // Name Overlay Styles
+  nameOverlay: {
+    position: 'absolute',
+    bottom: 80,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 30,
+    zIndex: 3,
+  },
+  nameOverlayTouchable: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+  profileNameOverlay: {
+    fontSize: 48,
+    fontWeight: '900',
+    color: '#fff',
+    textAlign: 'left',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    lineHeight: 50,
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+    marginBottom: 5,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  verifiedIconOverlay: {
+    marginLeft: 12,
+    textShadowColor: 'rgba(0, 0, 0, 0.7)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  profileSubtitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'left',
+    textShadowColor: 'rgba(0, 0, 0, 0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+    letterSpacing: 0.5,
+  },
+  statsSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 20,
+    paddingHorizontal: 40,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  nameEditOverlayContainer: {
+    alignItems: 'center',
+  },
+  nameInputOverlay: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    borderBottomWidth: 2,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    minWidth: 200,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 8,
+  },
+  nameEditActionsOverlay: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  nameActionButtonOverlay: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
 });
 

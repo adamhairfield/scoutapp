@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   Alert,
   StatusBar,
   TextInput,
+  ScrollView,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,6 +17,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { feedService, groupService } from '../services/database';
+import { supabase } from '../config/supabase';
 import CommentsModal from '../components/CommentsModal';
 import GroupOptionsModal from '../components/GroupOptionsModal';
 import PostOptionsModal from '../components/PostOptionsModal';
@@ -26,17 +28,21 @@ import ReactionsModal from '../components/ReactionsModal';
 import FeedTab from '../components/FeedTab';
 import PhotosTab from '../components/PhotosTab';
 import MembersTab from '../components/MembersTab';
+import RegistrationsTab from '../components/RegistrationsTab';
 import ConfettiAnimation from '../components/ConfettiAnimation';
 import { useGroupData } from '../hooks/useGroupData';
 import { styles } from './GroupDetailsScreen.styles';
 
 const GroupDetailsScreen = ({ navigation, route }) => {
-  const { group } = route.params;
+  const { group: initialGroup } = route.params;
   const { user } = useAuth();
   const { theme } = useTheme();
   
+  // Use state to manage group data so it can be updated
+  const [group, setGroup] = useState(initialGroup);
+  
   console.log('GroupDetailsScreen - Group data:', group);
-  console.log('GroupDetailsScreen - Cover photo URL:', group.cover_photo_url);
+  console.log('GroupDetailsScreen - Cover photo URL:', group?.cover_photo_url);
   
   const [activeTab, setActiveTab] = useState('Feed');
   const [commentsModalVisible, setCommentsModalVisible] = useState(false);
@@ -297,25 +303,156 @@ const GroupDetailsScreen = ({ navigation, route }) => {
     }
   };
 
-  const tabs = ['Feed', 'Photos', 'About', 'Members'];
+  // Determine if this is a team
+  const isTeam = group.type === 'team' || group.is_team === true || group.group_type === 'team';
+  
+  // Check if group has registrations
+  const [hasRegistrations, setHasRegistrations] = useState(false);
+  const [tabOrder, setTabOrder] = useState([]);
+  const [isReordering, setIsReordering] = useState(false);
+  
+  useEffect(() => {
+    checkForRegistrations();
+    loadTabOrder();
+  }, [group.id]);
+
+  const checkForRegistrations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('registrations')
+        .select('id')
+        .eq('group_id', group.id)
+        .limit(1);
+      
+      setHasRegistrations(data && data.length > 0);
+    } catch (error) {
+      console.error('Error checking registrations:', error);
+    }
+  };
+
+  const loadTabOrder = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('user_tab_preferences')
+        .select('tab_order')
+        .eq('user_id', user.id)
+        .eq('group_id', group.id)
+        .single();
+      
+      if (data && data.tab_order) {
+        setTabOrder(data.tab_order);
+      }
+    } catch (error) {
+      // No saved order, will use default
+      console.log('No saved tab order');
+    }
+  };
+
+  const saveTabOrder = async (newOrder) => {
+    try {
+      await supabase
+        .from('user_tab_preferences')
+        .upsert({
+          user_id: user.id,
+          group_id: group.id,
+          tab_order: newOrder,
+        }, {
+          onConflict: 'user_id,group_id'
+        });
+    } catch (error) {
+      console.error('Error saving tab order:', error);
+    }
+  };
+  
+  const defaultTabs = [
+    'Feed', 
+    'Photos', 
+    'About', 
+    ...(hasRegistrations ? ['Registrations'] : []),
+    isTeam ? 'Roster' : 'Members'
+  ];
+
+  // Use saved order if available, otherwise use default
+  const tabs = tabOrder.length > 0 
+    ? tabOrder.filter(tab => defaultTabs.includes(tab)) // Filter out tabs that no longer exist
+    : defaultTabs;
+
+  const handleLongPress = (index) => {
+    setIsReordering(true);
+  };
+
+  const handleTabMove = (fromIndex, toIndex) => {
+    const newTabs = [...tabs];
+    const [movedTab] = newTabs.splice(fromIndex, 1);
+    newTabs.splice(toIndex, 0, movedTab);
+    setTabOrder(newTabs);
+    saveTabOrder(newTabs);
+  };
+
+  const [selectedTabForMove, setSelectedTabForMove] = useState(null);
 
   const renderTabBar = () => (
-    <View style={[styles.tabBar, { backgroundColor: theme.colors.surface }]}>
-      {tabs.map((tab) => (
+    <View>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        style={[styles.tabBar, { backgroundColor: theme.colors.surface }]}
+        contentContainerStyle={styles.tabBarContent}
+      >
+        {tabs.map((tab, index) => (
+          <TouchableOpacity
+            key={tab}
+            style={[
+              styles.tab, 
+              activeTab === tab && styles.activeTab,
+              selectedTabForMove === index && { backgroundColor: `${theme.colors.primary}20` }
+            ]}
+            onPress={() => {
+              if (selectedTabForMove !== null) {
+                // Move tab
+                handleTabMove(selectedTabForMove, index);
+                setSelectedTabForMove(null);
+              } else {
+                setActiveTab(tab);
+              }
+            }}
+            onLongPress={() => {
+              setSelectedTabForMove(index);
+              Alert.alert(
+                'Reorder Tabs',
+                `Tap another tab to move "${tab}" there, or tap "${tab}" again to cancel.`,
+                [{ text: 'OK' }]
+              );
+            }}
+          >
+            {selectedTabForMove === index && (
+              <Ionicons 
+                name="move-outline" 
+                size={16} 
+                color={theme.colors.primary} 
+                style={{ marginRight: 4 }}
+              />
+            )}
+            <Text style={[
+              styles.tabText, 
+              { color: theme.colors.textSecondary },
+              activeTab === tab && [styles.activeTabText, { color: theme.colors.primary }]
+            ]}>
+              {tab}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+      {selectedTabForMove !== null && (
         <TouchableOpacity
-          key={tab}
-          style={[styles.tab, activeTab === tab && styles.activeTab]}
-          onPress={() => setActiveTab(tab)}
+          style={[styles.cancelReorderButton, { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.border }]}
+          onPress={() => setSelectedTabForMove(null)}
         >
-          <Text style={[
-            styles.tabText, 
-            { color: theme.colors.textSecondary },
-            activeTab === tab && [styles.activeTabText, { color: theme.colors.primary }]
-          ]}>
-            {tab}
+          <Text style={[styles.cancelReorderText, { color: theme.colors.primary }]}>
+            Cancel Reorder
           </Text>
         </TouchableOpacity>
-      ))}
+      )}
     </View>
   );
 
@@ -349,13 +486,18 @@ const GroupDetailsScreen = ({ navigation, route }) => {
             theme={theme}
           />
         );
+      case 'Registrations':
+        return <RegistrationsTab group={group} navigation={navigation} theme={theme} />;
       case 'Members':
+      case 'Roster':
         return (
           <MembersTab
             group={group}
             members={members}
             styles={styles}
             theme={theme}
+            isTeam={isTeam}
+            tabName={activeTab}
           />
         );
       default:
@@ -437,7 +579,9 @@ const GroupDetailsScreen = ({ navigation, route }) => {
                 <Text style={styles.memberCount}>
                   {memberCount} {memberCount === 1 ? 'Member' : 'Members'}
                 </Text>
-                <Text style={styles.groupType}>{group.sport || 'Sports Group'}</Text>
+                <Text style={styles.groupType}>
+                  {isTeam ? (group.sport ? `${group.sport} Team` : 'Team') : (group.sport || 'General')}
+                </Text>
               </View>
             </View>
             
@@ -468,6 +612,7 @@ const GroupDetailsScreen = ({ navigation, route }) => {
         group={group}
         user={user}
         navigation={navigation}
+        onGroupUpdate={(updatedGroup) => setGroup(updatedGroup)}
       />
 
       <PostOptionsModal

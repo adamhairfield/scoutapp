@@ -273,38 +273,39 @@ const GroupsScreen = ({ navigation }) => {
     </View>
   );
 
+  const renderActionButtons = () => (
+    <View style={styles.actionButtons}>
+      <TouchableOpacity style={[styles.actionButton, { backgroundColor: theme.colors.surface }]} onPress={handleCreateGroup}>
+        <Ionicons name="add-circle" size={18} color="#667eea" />
+        <Text style={[styles.actionButtonText, { color: theme.colors.textSecondary }]}>Create Group</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={[styles.actionButton, { backgroundColor: theme.colors.surface }]} onPress={handleCreateTeam}>
+        <Ionicons name="trophy" size={18} color="#667eea" />
+        <Text style={[styles.actionButtonText, { color: theme.colors.textSecondary }]}>Create Team</Text>
+      </TouchableOpacity>
+      
+      <TouchableOpacity 
+        style={[styles.actionButton, { backgroundColor: theme.colors.surface }]} 
+        onPress={() => navigation.navigate('JoinByInvite')}
+      >
+        <Ionicons name="people" size={18} color="#667eea" />
+        <Text style={[styles.actionButtonText, { color: theme.colors.textSecondary }]}>Join by Code</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
       <AppHeader 
         navigation={navigation}
-        title="Scout"
+        title="Scout."
         rightIcon="menu"
         onRightPress={() => navigation.navigate('Settings')}
         backgroundColor={theme.colors.background}
         textColor={theme.colors.text}
       />
-
-      {/* Action Buttons */}
-      <View style={styles.actionButtons}>
-        <TouchableOpacity style={[styles.actionButton, { backgroundColor: theme.colors.surface }]} onPress={handleCreateGroup}>
-          <Ionicons name="add-circle" size={18} color="#667eea" />
-          <Text style={[styles.actionButtonText, { color: theme.colors.textSecondary }]}>Create Group</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.actionButton, { backgroundColor: theme.colors.surface }]} onPress={handleCreateTeam}>
-          <Ionicons name="trophy" size={18} color="#667eea" />
-          <Text style={[styles.actionButtonText, { color: theme.colors.textSecondary }]}>Create Team</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.actionButton, { backgroundColor: theme.colors.surface }]} 
-          onPress={() => navigation.navigate('JoinByInvite')}
-        >
-          <Ionicons name="people" size={18} color="#667eea" />
-          <Text style={[styles.actionButtonText, { color: theme.colors.textSecondary }]}>Join by Code</Text>
-        </TouchableOpacity>
-      </View>
 
       <FlatList
         data={groups}
@@ -316,6 +317,7 @@ const GroupsScreen = ({ navigation }) => {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
+        ListHeaderComponent={renderActionButtons}
         ListEmptyComponent={renderEmptyState}
         showsVerticalScrollIndicator={false}
       />
@@ -336,7 +338,8 @@ const styles = StyleSheet.create({
   actionButtons: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    paddingTop: 140,
+    paddingTop: 110,
+    paddingBottom: 20,
     gap: 8,
     justifyContent: 'space-between',
   },

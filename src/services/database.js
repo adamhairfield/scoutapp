@@ -437,7 +437,7 @@ export const groupService = {
         .single();
 
       if (checkError) throw checkError;
-
+      
       if (group.leader_id !== userId) {
         return {
           success: false,
@@ -452,7 +452,7 @@ export const groupService = {
         .eq('id', groupId);
 
       if (error) throw error;
-
+      
       return { success: true };
     } catch (error) {
       console.error('Error updating group visibility:', error);
@@ -460,6 +460,47 @@ export const groupService = {
         success: false,
         error: error.message
       };
+    }
+  },
+
+  // Update group data
+  async updateGroup(groupId, updateData) {
+    try {
+      const { data, error } = await supabase
+        .from('groups')
+        .update({
+          ...updateData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', groupId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error updating group:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Leave a group
+  async leaveGroup(groupId, userId) {
+    try {
+      // Remove user from group_members table
+      const { error } = await supabase
+        .from('group_members')
+        .delete()
+        .eq('group_id', groupId)
+        .eq('player_id', userId);
+
+      if (error) throw error;
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error leaving group:', error);
+      return { success: false, error: error.message };
     }
   },
 

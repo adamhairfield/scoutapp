@@ -56,6 +56,18 @@ export const imageUploadService = {
   },
 
   /**
+   * Upload profile picture
+   * @param {string} userId - User ID for unique naming
+   * @param {string} uri - Local image URI
+   * @param {string} filename - Optional custom filename
+   * @returns {Promise<{success: boolean, url?: string, error?: string}>}
+   */
+  async uploadProfilePicture(userId, uri, filename = null) {
+    const path = filename || `profile_${Date.now()}`;
+    return this.uploadImage(uri, 'profile-pictures', `${userId}/${path}`);
+  },
+
+  /**
    * Delete an image from storage
    * @param {string} bucket - Storage bucket name
    * @param {string} path - File path in storage
@@ -99,5 +111,73 @@ export const imageUploadService = {
       console.error('Error extracting path from URL:', error);
       return null;
     }
+  },
+
+  /**
+   * Download image from external URL and upload to Supabase Storage
+   * @param {string} externalUrl - External image URL (e.g., from AI service)
+   * @param {string} bucket - Storage bucket name
+   * @param {string} path - File path in storage
+   * @returns {Promise<{success: boolean, url?: string, error?: string}>}
+   */
+  async downloadAndUploadImage(externalUrl, bucket, path) {
+    try {
+      console.log('📥 Downloading image from external URL:', externalUrl);
+      
+      // Download the image from external URL
+      const response = await fetch(externalUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to download image: ${response.status}`);
+      }
+      
+      const arrayBuffer = await response.arrayBuffer();
+      
+      // Determine file extension from URL or default to jpg
+      let fileExt = 'jpg';
+      const urlExt = externalUrl.split('.').pop()?.toLowerCase();
+      if (urlExt && ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(urlExt)) {
+        fileExt = urlExt;
+      }
+      
+      const fileName = `${path}.${fileExt}`;
+      
+      console.log('📤 Uploading to Supabase Storage:', bucket, fileName);
+      
+      // Upload to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .upload(fileName, arrayBuffer, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: `image/${fileExt}`,
+        });
+
+      if (error) {
+        console.error('❌ Upload error:', error);
+        return { success: false, error: error.message };
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(fileName);
+
+      console.log('✅ Successfully uploaded to Supabase:', publicUrl);
+      return { success: true, url: publicUrl };
+    } catch (error) {
+      console.error('❌ Download and upload failed:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Download AI-generated cover photo and upload to group-covers bucket
+   * @param {string} aiImageUrl - AI-generated image URL
+   * @param {string} groupId - Group ID for unique naming
+   * @returns {Promise<{success: boolean, url?: string, error?: string}>}
+   */
+  async uploadAIGeneratedCover(aiImageUrl, groupId) {
+    const path = `covers/ai-${groupId}-${Date.now()}`;
+    return this.downloadAndUploadImage(aiImageUrl, 'group-covers', path);
   }
 };

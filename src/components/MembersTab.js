@@ -3,7 +3,7 @@ import { View, Text, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Avatar from './Avatar';
 
-const MembersTab = ({ group, members, styles }) => {
+const MembersTab = ({ group, members, styles, theme, isTeam = false, tabName = 'Members' }) => {
   const renderMemberItem = ({ item: member }) => (
     <View style={styles.memberItem}>
       <Avatar
@@ -18,11 +18,13 @@ const MembersTab = ({ group, members, styles }) => {
           {member.isHost && (
             <View style={styles.hostBadge}>
               <Ionicons name="star" size={14} color="#FFD700" />
-              <Text style={styles.hostText}>Host</Text>
+              <Text style={styles.hostText}>{isTeam ? 'Coach' : 'Host'}</Text>
             </View>
           )}
         </View>
-        <Text style={styles.memberRole}>{member.role}</Text>
+        <Text style={styles.memberRole}>
+          {member.isHost ? (isTeam ? 'Coach' : 'Host') : (isTeam ? (member.position || 'Player') : 'Member')}
+        </Text>
       </View>
       {member.isHost && (
         <Ionicons name="star" size={20} color="#FFD700" style={styles.hostIcon} />
@@ -59,8 +61,12 @@ const MembersTab = ({ group, members, styles }) => {
       ListEmptyComponent={() => (
         <View style={styles.emptyMembers}>
           <Ionicons name="people-outline" size={60} color="#ccc" />
-          <Text style={styles.emptyMembersText}>No members yet</Text>
-          <Text style={styles.emptyMembersSubtext}>Invite friends to join this group</Text>
+          <Text style={styles.emptyMembersText}>
+            {isTeam ? 'No players yet' : 'No members yet'}
+          </Text>
+          <Text style={styles.emptyMembersSubtext}>
+            {isTeam ? 'Invite players to join this team' : 'Invite friends to join this group'}
+          </Text>
         </View>
       )}
     />

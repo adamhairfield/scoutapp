@@ -114,15 +114,20 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
   },
   tabBar: {
-    flexDirection: 'row',
     backgroundColor: '#fff',
-    paddingHorizontal: 20,
     paddingTop: 10,
+    maxHeight: 50,
+  },
+  tabBarContent: {
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   tab: {
-    flex: 1,
     alignItems: 'center',
     paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginRight: 8,
   },
   activeTab: {
     borderBottomWidth: 2,
@@ -134,6 +139,16 @@ export const styles = StyleSheet.create({
   },
   activeTabText: {
     color: '#667eea',
+    fontWeight: '600',
+  },
+  cancelReorderButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    borderTopWidth: 1,
+  },
+  cancelReorderText: {
+    fontSize: 14,
     fontWeight: '600',
   },
   feedContainer: {
@@ -436,5 +451,37 @@ export const styles = StyleSheet.create({
     color: '#999',
     marginTop: 15,
     fontWeight: '500',
+  },
+  // Empty State Styles
+  emptyStateContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  emptyStateIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  emptyStateTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyStateSubtitle: {
+    fontSize: 16,
+    marginBottom: 12,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  emptyStateHint: {
+    fontSize: 14,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });

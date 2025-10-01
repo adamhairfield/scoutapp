@@ -155,7 +155,7 @@ const HomeScreen = ({ navigation }) => {
       {/* Header */}
       <AppHeader 
         navigation={navigation}
-        title="Scout"
+        title="Scout."
         rightIcon="menu"
         onRightPress={() => navigation.navigate('Settings')}
         backgroundColor={theme.colors.background}

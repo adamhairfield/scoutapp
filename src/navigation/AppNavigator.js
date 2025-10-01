@@ -26,6 +26,12 @@ import SearchScreen from '../screens/SearchScreen';
 import NotificationTestScreen from '../screens/NotificationTestScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import SportsEngineMigrationScreen from '../screens/SportsEngineMigrationScreen';
+import ProfilePictureEditorScreen from '../screens/ProfilePictureEditorScreen';
+import CreateRegistrationScreen from '../screens/CreateRegistrationScreen';
+import GroupRegistrationsScreen from '../screens/GroupRegistrationsScreen';
+import RegistrationDetailsScreen from '../screens/RegistrationDetailsScreen';
+import ParticipantRegistrationScreen from '../screens/ParticipantRegistrationScreen';
+import ManageRegistrationSubmissionsScreen from '../screens/ManageRegistrationSubmissionsScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -112,6 +118,12 @@ const AppNavigator = () => {
             <Stack.Screen name="Search" component={SearchScreen} />
             <Stack.Screen name="NotificationTest" component={NotificationTestScreen} />
             <Stack.Screen name="SportsEngineMigration" component={SportsEngineMigrationScreen} />
+            <Stack.Screen name="ProfilePictureEditor" component={ProfilePictureEditorScreen} />
+            <Stack.Screen name="CreateRegistration" component={CreateRegistrationScreen} />
+            <Stack.Screen name="GroupRegistrations" component={GroupRegistrationsScreen} />
+            <Stack.Screen name="RegistrationDetails" component={RegistrationDetailsScreen} />
+            <Stack.Screen name="ParticipantRegistration" component={ParticipantRegistrationScreen} />
+            <Stack.Screen name="ManageRegistrationSubmissions" component={ManageRegistrationSubmissionsScreen} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} />

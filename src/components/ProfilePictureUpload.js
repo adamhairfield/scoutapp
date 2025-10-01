@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, Fragment } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { profileService } from '../services/profileService';
+import AIProfileModal from './AIProfileModal';
 
 const ProfilePictureUpload = ({ 
   userId, 
@@ -20,9 +21,12 @@ const ProfilePictureUpload = ({
   style,
   size = 80,
   showEditIcon = false,
-  isCoverPhoto = false
+  isCoverPhoto = false,
+  coverHeight = 400,
+  editable = true
 }) => {
   const [uploading, setUploading] = useState(false);
+  const [aiModalVisible, setAiModalVisible] = useState(false);
 
   const requestPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -40,8 +44,10 @@ const ProfilePictureUpload = ({
     const hasPermission = await requestPermissions();
     if (!hasPermission) return;
 
-    const options = ['Take Photo', 'Choose from Library', 'Cancel'];
-    const cancelButtonIndex = 2;
+    const options = isCoverPhoto 
+      ? ['Take Photo', 'Choose from Library', 'Cancel']
+      : ['Take Photo', 'Choose from Library', 'Generate with AI', 'Cancel'];
+    const cancelButtonIndex = isCoverPhoto ? 2 : 3;
 
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
@@ -52,23 +58,28 @@ const ProfilePictureUpload = ({
         },
         (buttonIndex) => {
           if (buttonIndex === 0) {
-            openCamera();
+            takePhoto();
           } else if (buttonIndex === 1) {
             openImageLibrary();
+          } else if (buttonIndex === 2 && !isCoverPhoto) {
+            setAiModalVisible(true);
           }
         }
       );
     } else {
       // For Android, show alert
-      Alert.alert(
-        'Update Profile Picture',
-        'Choose an option',
-        [
-          { text: 'Take Photo', onPress: openCamera },
-          { text: 'Choose from Library', onPress: openImageLibrary },
-          { text: 'Cancel', style: 'cancel' },
-        ]
-      );
+      const alertOptions = [
+        { text: 'Take Photo', onPress: takePhoto },
+        { text: 'Choose from Library', onPress: openImageLibrary },
+      ];
+      
+      if (!isCoverPhoto) {
+        alertOptions.push({ text: 'Generate with AI', onPress: () => setAiModalVisible(true) });
+      }
+      
+      alertOptions.push({ text: 'Cancel', style: 'cancel' });
+      
+      Alert.alert('Update Profile Picture', 'Choose an option', alertOptions);
     }
   };
 
@@ -145,15 +156,17 @@ const ProfilePictureUpload = ({
   };
 
   return (
+    <Fragment>
     <TouchableOpacity
       style={[styles.container, style]}
-      onLongPress={handleLongPress}
+      onLongPress={editable ? handleLongPress : undefined}
       delayLongPress={500}
-      activeOpacity={0.8}
+      activeOpacity={editable ? 0.8 : 1}
+      disabled={!editable}
     >
       <View style={[
         styles.imageContainer, 
-        isCoverPhoto ? { width: size, height: 400 } : { width: size, height: size, borderRadius: size / 2 }
+        isCoverPhoto ? { width: size, height: coverHeight } : { width: size, height: size, borderRadius: size / 2 }
       ]}>
         {currentImageUrl ? (
           <Image
@@ -161,7 +174,7 @@ const ProfilePictureUpload = ({
             style={[
               styles.profileImage, 
               isCoverPhoto 
-                ? { width: size, height: 400 } 
+                ? { width: size, height: coverHeight } 
                 : { width: size, height: size, borderRadius: size / 2 }
             ]}
             resizeMode="cover"
@@ -170,7 +183,7 @@ const ProfilePictureUpload = ({
           <View style={[
             styles.placeholderContainer, 
             isCoverPhoto 
-              ? { width: size, height: 400 } 
+              ? { width: size, height: coverHeight } 
               : { width: size, height: size, borderRadius: size / 2 }
           ]}>
             <Ionicons 
@@ -185,7 +198,7 @@ const ProfilePictureUpload = ({
           <View style={[
             styles.uploadingOverlay, 
             isCoverPhoto 
-              ? { width: size, height: 400 } 
+              ? { width: size, height: coverHeight } 
               : { width: size, height: size, borderRadius: size / 2 }
           ]}>
             <Ionicons name="cloud-upload" size={isCoverPhoto ? 40 : size * 0.3} color="#fff" />
@@ -199,6 +212,14 @@ const ProfilePictureUpload = ({
         )}
       </View>
     </TouchableOpacity>
+    
+    <AIProfileModal
+      visible={aiModalVisible}
+      onClose={() => setAiModalVisible(false)}
+      userId={userId}
+      onImageUpdate={onImageUpdate}
+    />
+    </Fragment>
   );
 };
 

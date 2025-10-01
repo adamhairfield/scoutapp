@@ -75,6 +75,8 @@ const CreateTeamScreen = ({ navigation }) => {
         coach_id: user.id,
         description: description,
         season: `${ageGroup} ${new Date().getFullYear()}`,
+        type: 'team',
+        is_team: true,
       };
 
       const result = await teamService.createTeam(teamData);
